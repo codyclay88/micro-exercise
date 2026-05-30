@@ -1,6 +1,108 @@
 @page "/reports"
+@rendermode InteractiveServer
+@using MicroExercise.Core.Abstractions
+@using MicroExercise.Core.Dtos
+@using MicroExercise.Core.Enums
+@inject IReportService ReportService
+@inject ICurrentUser CurrentUser
 
 <PageTitle>Micro-Burst · Reports</PageTitle>
 
 <h1 class="h4 mb-3">Reports</h1>
-<p class="text-secondary">View your accumulated volume over a date range. Coming soon.</p>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" class="form-control form-control-sm" @bind="_from" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" class="form-control form-control-sm" @bind="_to" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-auto">
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-secondary" @onclick="() => SetRangeAsync(7)">7d</button>
+            <button class="btn btn-outline-secondary" @onclick="() => SetRangeAsync(30)">30d</button>
+            <button class="btn btn-outline-secondary" @onclick="() => SetRangeAsync(90)">90d</button>
+        </div>
+    </div>
+</div>
+
+@if (_summary is null)
+{
+    <p class="text-secondary">Loading…</p>
+}
+else if (_summary.Count == 0)
+{
+    <p class="text-secondary py-4">No bursts recorded between @_from.ToString("MMM d") and @_to.ToString("MMM d, yyyy").</p>
+}
+else
+{
+    <p class="text-secondary small">
+        @_from.ToString("MMM d") – @_to.ToString("MMM d, yyyy") ·
+        @_totalBursts burst@(_totalBursts == 1 ? "" : "s") across @_summary.Count exercise@(_summary.Count == 1 ? "" : "s")
+    </p>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Exercise</th>
+                    <th class="text-end">Bursts</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Avg / burst</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _summary)
+                {
+                    <tr>
+                        <td>@row.ExerciseName</td>
+                        <td class="text-end">@row.TotalBursts</td>
+                        <td class="text-end fw-medium">@row.TotalVolume <span class="text-secondary fw-normal">@Unit(row.TrackingType)</span></td>
+                        <td class="text-end text-secondary">@Average(row) @Unit(row.TrackingType)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private DateOnly _from = DateOnly.FromDateTime(DateTime.Today).AddDays(-29);
+    private DateOnly _to = DateOnly.FromDateTime(DateTime.Today);
+
+    private IReadOnlyList<ExerciseSummaryDto>? _summary;
+    private int _totalBursts;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
+    private static string Average(ExerciseSummaryDto r) =>
+        r.TotalBursts == 0 ? "0" : ((double)r.TotalVolume / r.TotalBursts).ToString("0.#");
+
+    private async Task SetRangeAsync(int days)
+    {
+        _to = DateOnly.FromDateTime(DateTime.Today);
+        _from = _to.AddDays(-(days - 1));
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_to < _from)
+        {
+            _summary = Array.Empty<ExerciseSummaryDto>();
+            _totalBursts = 0;
+            return;
+        }
+
+        var start = new DateTimeOffset(_from.ToDateTime(TimeOnly.MinValue));
+        var end = new DateTimeOffset(_to.ToDateTime(TimeOnly.MaxValue));
+        var summary = await ReportService.GetSummaryAsync(CurrentUser.UserId, start, end);
+
+        // Most-performed first (volumes aren't comparable across units, but this is a
+        // reasonable default ordering within the table).
+        _summary = summary.OrderByDescending(s => s.TotalBursts).ThenBy(s => s.ExerciseName).ToList();
+        _totalBursts = summary.Sum(s => s.TotalBursts);
+    }
+}
