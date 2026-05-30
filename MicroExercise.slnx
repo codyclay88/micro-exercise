@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MicroExercise.Core/MicroExercise.Core.csproj" />
+    <Project Path="src/MicroExercise.Infrastructure/MicroExercise.Infrastructure.csproj" />
+    <Project Path="src/MicroExercise.Web/MicroExercise.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MicroExercise.Tests/MicroExercise.Tests.csproj" />
+  </Folder>
+</Solution>
