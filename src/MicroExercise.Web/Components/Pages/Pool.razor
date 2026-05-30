@@ -17,7 +17,7 @@
 }
 else
 {
-    <!-- Add an exercise from the global catalog (spec §4.2). -->
+    <!-- Add from the catalog (global + your custom exercises) or create a new one (spec §4.2). -->
     <div class="card mb-4">
         <div class="card-body">
             <h2 class="h6 mb-3">Add an exercise</h2>
@@ -25,23 +25,45 @@ else
                 <div class="col-12 col-md-4">
                     <label class="form-label small mb-0">Exercise</label>
                     <select class="form-select form-select-sm" @bind="_addTypeId">
-                        @foreach (var t in _types)
+                        <option value="@CustomSentinel">➕ New custom exercise…</option>
+                        @foreach (var t in _types!)
                         {
-                            <option value="@t.Id">@t.Name (@Unit(t.DefaultTrackingType))</option>
+                            <option value="@t.Id">@t.Name (@Unit(t.DefaultTrackingType))@(t.IsCustom ? " · custom" : "")</option>
                         }
                     </select>
                 </div>
+
+                @if (IsCustomMode)
+                {
+                    <div class="col-7 col-md-3">
+                        <label class="form-label small mb-0">Name</label>
+                        <input type="text" maxlength="50" class="form-control form-control-sm"
+                               placeholder="e.g. Bunny Hops" @bind="_newName" />
+                    </div>
+                    <div class="col-5 col-md-2">
+                        <label class="form-label small mb-0">Type</label>
+                        <select class="form-select form-select-sm" @bind="_newTrackingType">
+                            <option value="@TrackingType.Reps">Reps</option>
+                            <option value="@TrackingType.Seconds">Time (sec)</option>
+                        </select>
+                    </div>
+                }
+                else
+                {
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small mb-0">Custom name <span class="text-secondary">(optional)</span></label>
+                        <input type="text" maxlength="100" class="form-control form-control-sm"
+                               placeholder="e.g. KB RDL (35 lbs)" @bind="_addCustomName" />
+                    </div>
+                }
+
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-0">Target</label>
                     <input type="number" min="1" class="form-control form-control-sm" @bind="_addTarget" />
                 </div>
-                <div class="col-6 col-md-4">
-                    <label class="form-label small mb-0">Custom name <span class="text-secondary">(optional)</span></label>
-                    <input type="text" maxlength="100" class="form-control form-control-sm"
-                           placeholder="e.g. KB RDL (35 lbs)" @bind="_addCustomName" />
-                </div>
-                <div class="col-12 col-md-2 d-grid">
-                    <button class="btn btn-sm btn-primary" @onclick="AddAsync" disabled="@(_busy || _addTarget <= 0)">Add</button>
+                <div class="col-6 col-md-1 d-grid">
+                    <button class="btn btn-sm btn-primary" @onclick="AddAsync"
+                            disabled="@(_busy || _addTarget <= 0 || (IsCustomMode && string.IsNullOrWhiteSpace(_newName)))">Add</button>
                 </div>
             </div>
         </div>
@@ -126,9 +148,14 @@ else
     private bool _busy;
 
     // Add form
+    private const int CustomSentinel = -1;
     private int _addTypeId;
     private int _addTarget = 10;
     private string? _addCustomName;
+    private string? _newName;
+    private TrackingType _newTrackingType = TrackingType.Reps;
+
+    private bool IsCustomMode => _addTypeId == CustomSentinel;
 
     // Edit state
     private int? _editingId;
@@ -141,9 +168,8 @@ else
     protected override async Task OnInitializedAsync()
     {
         _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
-        _types = await PoolService.GetExerciseTypesAsync();
-        _typeNames = _types.ToDictionary(t => t.Id, t => t.Name);
-        _addTypeId = _types.FirstOrDefault()?.Id ?? 0;
+        await RefreshTypesAsync();
+        _addTypeId = _types!.FirstOrDefault()?.Id ?? CustomSentinel;
         await LoadAsync();
     }
 
@@ -157,17 +183,38 @@ else
         _pool = await PoolService.GetActivePoolAsync(_userId);
     }
 
+    private async Task RefreshTypesAsync()
+    {
+        _types = await PoolService.GetExerciseTypesAsync(_userId);
+        _typeNames = _types.ToDictionary(t => t.Id, t => t.Name);
+    }
+
     private async Task AddAsync()
     {
-        if (_addTarget <= 0 || _addTypeId <= 0)
+        if (_addTarget <= 0)
             return;
 
         _busy = true;
         try
         {
-            await PoolService.AddPoolItemAsync(_userId,
-                new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
-            _addCustomName = null;
+            if (IsCustomMode)
+            {
+                if (string.IsNullOrWhiteSpace(_newName))
+                    return;
+
+                await PoolService.AddCustomExerciseAsync(_userId,
+                    new CreateCustomExerciseRequest(_newName.Trim(), _newTrackingType, _addTarget));
+                _newName = null;
+                _newTrackingType = TrackingType.Reps;
+                await RefreshTypesAsync(); // surface the new exercise in the catalog for reuse
+            }
+            else
+            {
+                await PoolService.AddPoolItemAsync(_userId,
+                    new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
+                _addCustomName = null;
+            }
+
             _addTarget = 10;
             await LoadAsync();
         }

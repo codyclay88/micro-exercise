@@ -24,11 +24,13 @@ public class PoolService(AppDbContext db) : IPoolService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ExerciseTypeDto>> GetExerciseTypesAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ExerciseTypeDto>> GetExerciseTypesAsync(int userId, CancellationToken ct = default)
     {
+        // Global catalog (OwnerUserId == null) plus the user's own custom exercises.
         return await db.ExerciseTypes
+            .Where(t => t.OwnerUserId == null || t.OwnerUserId == userId)
             .OrderBy(t => t.Name)
-            .Select(t => new ExerciseTypeDto(t.Id, t.Name, t.DefaultTrackingType))
+            .Select(t => new ExerciseTypeDto(t.Id, t.Name, t.DefaultTrackingType, t.OwnerUserId != null))
             .ToListAsync(ct);
     }
 
@@ -62,6 +64,49 @@ public class PoolService(AppDbContext db) : IPoolService
             entry.Id,
             entry.ExerciseTypeId,
             entry.CustomName ?? exerciseType.Name,
+            exerciseType.DefaultTrackingType,
+            entry.TargetQuantity,
+            entry.SortOrder,
+            entry.IsActive);
+    }
+
+    public async Task<PoolItemDto> AddCustomExerciseAsync(
+        int userId, CreateCustomExerciseRequest request, CancellationToken ct = default)
+    {
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Exercise name is required.", nameof(request));
+
+        // Create the custom exercise (owned by the user) so it's reusable from their catalog.
+        var exerciseType = new ExerciseType
+        {
+            Name = name,
+            DefaultTrackingType = request.TrackingType,
+            OwnerUserId = userId
+        };
+        db.ExerciseTypes.Add(exerciseType);
+        await db.SaveChangesAsync(ct);
+
+        var nextSortOrder = await db.ExercisePool
+            .Where(p => p.UserId == userId)
+            .Select(p => (int?)p.SortOrder)
+            .MaxAsync(ct) + 1 ?? 0;
+
+        var entry = new ExercisePool
+        {
+            UserId = userId,
+            ExerciseTypeId = exerciseType.Id,
+            TargetQuantity = request.TargetQuantity,
+            SortOrder = nextSortOrder,
+            IsActive = true
+        };
+        db.ExercisePool.Add(entry);
+        await db.SaveChangesAsync(ct);
+
+        return new PoolItemDto(
+            entry.Id,
+            entry.ExerciseTypeId,
+            exerciseType.Name,
             exerciseType.DefaultTrackingType,
             entry.TargetQuantity,
             entry.SortOrder,

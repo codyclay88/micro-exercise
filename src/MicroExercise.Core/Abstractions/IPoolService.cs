@@ -8,11 +8,20 @@ public interface IPoolService
     /// <summary>The user's active pool entries, in dashboard display order.</summary>
     Task<IReadOnlyList<PoolItemDto>> GetActivePoolAsync(int userId, CancellationToken ct = default);
 
-    /// <summary>The global exercise catalog available to add to a pool.</summary>
-    Task<IReadOnlyList<ExerciseTypeDto>> GetExerciseTypesAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Exercises the user can add to their pool: the global catalog plus the user's own
+    /// custom exercises.
+    /// </summary>
+    Task<IReadOnlyList<ExerciseTypeDto>> GetExerciseTypesAsync(int userId, CancellationToken ct = default);
 
     /// <summary>Adds a new exercise to the user's pool. Throws if the exercise type is unknown.</summary>
     Task<PoolItemDto> AddPoolItemAsync(int userId, CreatePoolItemRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates a brand-new custom exercise owned by the user and adds it to their pool.
+    /// The exercise then appears in the user's catalog for reuse.
+    /// </summary>
+    Task<PoolItemDto> AddCustomExerciseAsync(int userId, CreateCustomExerciseRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a pool entry's custom name and target quantity. Returns the updated entry,

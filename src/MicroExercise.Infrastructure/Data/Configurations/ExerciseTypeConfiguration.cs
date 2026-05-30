@@ -1,5 +1,6 @@
 using MicroExercise.Core.Entities;
 using MicroExercise.Core.Enums;
+using MicroExercise.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,6 +22,14 @@ public class ExerciseTypeConfiguration : IEntityTypeConfiguration<ExerciseType>
         builder.Property(t => t.DefaultTrackingType)
             .HasConversion<string>()
             .HasMaxLength(20);
+
+        // null OwnerUserId = global catalog entry; otherwise a user's private custom exercise.
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(t => t.OwnerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(t => t.OwnerUserId);
 
         // Global lookup catalog available to every user's pool.
         builder.HasData(

@@ -25,6 +25,7 @@ The application relies on a compact, highly normalized four-table structure to m
 | **ExerciseType** (System Lookups) | Id | INT | Primary Key, Identity |
 |  | Name | VARCHAR(50) | e.g., "Push-ups", "Dead Hang", "KB Swings" |
 |  | DefaultTrackingType | VARCHAR(20) | Enum value: Reps or Seconds |
+|  | OwnerUserId | INT (nullable) | FK \-\> User(Id); null \= global catalog, set \= a user's private custom exercise |
 | **ExercisePool** (User Customizations) | Id | INT | Primary Key, Identity |
 |  | UserId | INT | Foreign Key \-\> User(Id) |
 |  | ExerciseTypeId | INT | Foreign Key \-\> ExerciseType(Id) |
@@ -54,6 +55,7 @@ The primary view of the application must prioritize immediate data entry.
 An administrative configuration panel where users tailor their recurring rotation of movements.
 
 * Allows discovery and addition of predefined global ExerciseType entries.  
+* **Custom exercises:** users can create a brand-new exercise from scratch — choosing its name, tracking type (Reps or Seconds), and target — without it pre-existing in the global catalog (e.g. "Bunny Hops", 100 reps; "Planks", 30 seconds). A custom exercise is stored as a user-owned `ExerciseType` (`OwnerUserId` set) so it is private to its creator and reusable from their catalog for additional variants.  
 * Supports full customization of the target display text and target unit quantities.  
 * Provides sorting or prioritization mechanics to determine dashboard layout hierarchy.
 
@@ -83,6 +85,10 @@ Returns: Collection of active configured exercises for the logged-in user's quic
 POST /api/exercises/pool  
 Body: { "exerciseTypeId": int, "targetQuantity": int, "customName": string }  
 Returns: The newly instantiated ExercisePool entity object.
+
+POST /api/exercises/custom  
+Body: { "name": string, "trackingType": "Reps"|"Seconds", "targetQuantity": int }  
+Returns: The new pool item; a user-owned ExerciseType is created and added to the pool.
 
 POST /api/logs  
 Body: { "exercisePoolId": int, "quantity": int }  

@@ -16,6 +16,12 @@ public class ExerciseType
     /// <summary>Whether this movement is measured in reps or seconds by default.</summary>
     public TrackingType DefaultTrackingType { get; set; }
 
+    /// <summary>
+    /// Owner of a user-created custom exercise (FK to the Identity user, configured in
+    /// Infrastructure). <c>null</c> means a global/system catalog entry available to everyone.
+    /// </summary>
+    public int? OwnerUserId { get; set; }
+
     /// <summary>User pool entries derived from this exercise type.</summary>
     public ICollection<ExercisePool> PoolEntries { get; set; } = new List<ExercisePool>();
 }

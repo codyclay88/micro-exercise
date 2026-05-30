@@ -21,12 +21,28 @@ public static class ApiEndpoints
             return Results.Ok(items);
         });
 
-        // GET /api/exercises/types — global catalog for pool discovery (spec §4.2).
+        // GET /api/exercises/types — catalog for pool discovery: global + the user's custom (spec §4.2).
         api.MapGet("/exercises/types", async (
-            IPoolService pool, CancellationToken ct) =>
+            IPoolService pool, ICurrentUser user, CancellationToken ct) =>
         {
-            var types = await pool.GetExerciseTypesAsync(ct);
+            var types = await pool.GetExerciseTypesAsync(user.UserId, ct);
             return Results.Ok(types);
+        });
+
+        // POST /api/exercises/custom — create a brand-new custom exercise and add it to the pool.
+        api.MapPost("/exercises/custom", async (
+            CreateCustomExerciseRequest request, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
+        {
+            var errors = new Dictionary<string, string[]>();
+            if (string.IsNullOrWhiteSpace(request.Name))
+                errors["name"] = ["Exercise name is required."];
+            if (request.TargetQuantity <= 0)
+                errors["targetQuantity"] = ["Target quantity must be greater than zero."];
+            if (errors.Count > 0)
+                return Results.ValidationProblem(errors);
+
+            var created = await pool.AddCustomExerciseAsync(user.UserId, request, ct);
+            return Results.Created($"/api/exercises/pool/{created.Id}", created);
         });
 
         // POST /api/exercises/pool — add an exercise to the user's pool.
