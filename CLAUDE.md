@@ -74,24 +74,35 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
 - **EF migrations use Infrastructure as the startup project**, because the
   `Microsoft.EntityFrameworkCore.Design` package doesn't flow to Web (dev dependency) and a
   design-time `AppDbContextFactory` lives in Infrastructure.
-- **Dev database is disposable:** `microburst.db*` is git-ignored; migrations + `SeedData`
-  run on startup. Delete the files to reset to a clean seed. If you change the model, delete
-  the local DB (or add a migration) — startup `MigrateAsync` won't reconcile a stale schema.
+- **Dev database is disposable:** `microburst.db*` is git-ignored; `MigrateAsync` runs on
+  startup and the migration seeds the global exercise catalog (user data is created on
+  registration). Delete the files to reset. If you change the model, delete the local DB (or
+  add a migration) — startup `MigrateAsync` won't reconcile a stale schema.
 - `dotnet-ef` tooling may warn it's older than the runtime (e.g. 10.0.0 vs 10.0.8) — cosmetic.
 
-## Auth (MVP)
+## Auth (ASP.NET Core Identity)
 
-Cookie auth is configured, but there is no login UI yet: a middleware in `Program.cs`
-auto-signs-in the seeded demo user (`AppDefaults.DemoUserId`). `HttpContextCurrentUser`
-reads the `NameIdentifier` claim and falls back to the demo user (which is also what happens
-inside a Blazor circuit, where `HttpContext` is null). Real identity can replace this without
-touching services.
+- `ApplicationUser : IdentityUser<int>` (Infrastructure/Identity) — **int keys** to match the
+  schema. `AppDbContext` is an `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`.
+- Register/Login/Logout are **static SSR** components in `Components/Account` (the auth cookie
+  must be written on an HTTP request, not over the SignalR circuit). Registration seeds a few
+  starter pool items, then signs in. Email confirmation is **off** (no mail service).
+- The Identity application cookie's `LoginPath` is set to `/login` in `Program.cs` — the
+  default would be `/Account/Login`. `[Authorize]` on a page is enforced at the endpoint
+  (server-side), so an unauthenticated request is redirected by the cookie middleware before
+  the `AuthorizeRouteView`/`RedirectToLogin` fallback runs.
+- **Resolving the current user differs by context:** Blazor components read it from
+  `AuthenticationStateProvider` / `AuthenticationState` (HttpContext is null in a circuit) via
+  `ClaimsPrincipal.GetUserId()`; the HTTP API uses `ICurrentUser` (`HttpContextCurrentUser`)
+  and the `/api` group has `.RequireAuthorization()`. Services themselves take an explicit
+  `int userId` and stay auth-agnostic.
 
 ## Testing
 
 xUnit in `tests/MicroExercise.Tests`. `TestDb` spins up a fresh SQLite in-memory database
-per test (connection held open; `EnsureCreated` applies the model + `HasData` seeds, so the
-demo user id 1 and exercise types 1–8 exist). Test services directly by passing a `userId`.
+per test (connection held open; `EnsureCreated` applies the model + `HasData`, so exercise
+types 1–8 exist) and seeds a primary `ApplicationUser` (`TestDb.PrimaryUserId` == 1). Test
+services directly by passing a `userId`.
 
 ## Conventions for changes
 

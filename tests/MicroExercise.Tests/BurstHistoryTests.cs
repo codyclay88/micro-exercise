@@ -1,13 +1,14 @@
 using MicroExercise.Core;
 using MicroExercise.Core.Dtos;
 using MicroExercise.Core.Entities;
+using MicroExercise.Infrastructure.Identity;
 using MicroExercise.Infrastructure.Services;
 
 namespace MicroExercise.Tests;
 
 public class BurstHistoryTests
 {
-    private const int UserId = AppDefaults.DemoUserId;
+    private const int UserId = TestDb.PrimaryUserId;
     private static readonly DateTimeOffset Anchor = new(2026, 5, 10, 9, 0, 0, TimeSpan.Zero);
 
     private static async Task<int> AddPoolEntryAsync(TestDb db, int userId, int exerciseTypeId = 1)
@@ -48,7 +49,7 @@ public class BurstHistoryTests
     public async Task GetHistoryAsync_ExcludesOtherUsersBursts()
     {
         using var db = new TestDb();
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var mine = await AddPoolEntryAsync(db, UserId);
         var theirs = await AddPoolEntryAsync(db, 2);
@@ -87,7 +88,7 @@ public class BurstHistoryTests
     public async Task UpdateLogAsync_BurstOwnedByAnotherUser_ReturnsNull_AndDoesNotChange()
     {
         using var db = new TestDb();
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var theirPool = await AddPoolEntryAsync(db, 2);
         var logId = await AddLogAsync(db, theirPool, 10, Anchor);
@@ -119,7 +120,7 @@ public class BurstHistoryTests
     public async Task DeleteLogAsync_BurstOwnedByAnotherUser_ReturnsFalse_AndKeepsRow()
     {
         using var db = new TestDb();
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var theirPool = await AddPoolEntryAsync(db, 2);
         var logId = await AddLogAsync(db, theirPool, 10, Anchor);

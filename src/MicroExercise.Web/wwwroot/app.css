@@ -7,6 +7,11 @@ html, body {
     user-select: none;
 }
 
+/* FocusOnNavigate moves focus to the page heading; don't show an outline box. */
+h1:focus {
+    outline: none;
+}
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }

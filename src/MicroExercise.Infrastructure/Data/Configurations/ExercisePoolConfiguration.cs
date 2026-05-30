@@ -1,4 +1,5 @@
 using MicroExercise.Core.Entities;
+using MicroExercise.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,8 +19,8 @@ public class ExercisePoolConfiguration : IEntityTypeConfiguration<ExercisePool>
         builder.Property(p => p.IsActive)
             .HasDefaultValue(true);
 
-        builder.HasOne(p => p.User)
-            .WithMany(u => u.Pool)
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
             .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 

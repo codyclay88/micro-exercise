@@ -1,0 +1,106 @@
+@page "/register"
+@using System.ComponentModel.DataAnnotations
+@using MicroExercise.Core.Abstractions
+@using MicroExercise.Core.Dtos
+@using MicroExercise.Infrastructure.Identity
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@attribute [AllowAnonymous]
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IPoolService PoolService
+@inject NavigationManager Nav
+
+<PageTitle>Micro-Burst · Create account</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+        <h1 class="h4 mb-3">Create your account</h1>
+
+        @if (_errors is not null)
+        {
+            <div class="alert alert-danger py-2" role="alert">
+                <ul class="mb-0 ps-3">
+                    @foreach (var e in _errors)
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label" for="displayName">Display name</label>
+                <InputText id="displayName" class="form-control" @bind-Value="Input.DisplayName" autocomplete="nickname" />
+                <ValidationMessage For="() => Input.DisplayName" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="Input.Email" autocomplete="username" />
+                <ValidationMessage For="() => Input.Email" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="new-password" />
+                <div class="form-text">At least 6 characters.</div>
+                <ValidationMessage For="() => Input.Password" class="text-danger small" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Create account</button>
+        </EditForm>
+
+        <p class="text-secondary small mt-3 mb-0">
+            Already have an account? <a href="login">Sign in</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    // A handful of sensible starter exercises so the dashboard isn't empty on first login.
+    private static readonly CreatePoolItemRequest[] StarterPool =
+    [
+        new(ExerciseTypeId: 1, TargetQuantity: 10, CustomName: null), // Push-ups
+        new(ExerciseTypeId: 3, TargetQuantity: 20, CustomName: null), // Bodyweight Squats
+        new(ExerciseTypeId: 6, TargetQuantity: 30, CustomName: null), // Dead Hang
+    ];
+
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = new();
+
+    private List<string>? _errors;
+
+    private async Task RegisterAsync()
+    {
+        var user = new ApplicationUser
+        {
+            UserName = Input.Email,
+            Email = Input.Email,
+            DisplayName = Input.DisplayName
+        };
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+        if (!result.Succeeded)
+        {
+            _errors = result.Errors.Select(e => e.Description).ToList();
+            return;
+        }
+
+        foreach (var item in StarterPool)
+            await PoolService.AddPoolItemAsync(user.Id, item);
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        Nav.NavigateTo("");
+    }
+
+    private sealed class InputModel
+    {
+        [Required, StringLength(100)]
+        public string DisplayName { get; set; } = "";
+
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, DataType(DataType.Password), StringLength(100, MinimumLength = 6)]
+        public string Password { get; set; } = "";
+    }
+}

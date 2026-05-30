@@ -67,14 +67,14 @@ dotnet run
 Then open **http://localhost:5077** (or `dotnet run --launch-profile https` for
 **https://localhost:7020**).
 
-On first run the app creates a local SQLite database (`microburst.db`), applies migrations,
-and seeds a demo user with a few exercises and ~2 weeks of sample history, so every page is
-populated immediately. The database file is git-ignored and rebuilt from migrations + seed
-if deleted.
+On first run the app creates a local SQLite database (`microburst.db`) and applies
+migrations (which seed the global exercise catalog). Register an account to get started —
+new sign-ups receive a few starter exercises. The database file is git-ignored and rebuilt
+from migrations if deleted.
 
-> **Authentication (MVP):** a single seeded demo user is auto-signed-in. Real
-> registration/login is intentionally deferred; the data model is structured so an identity
-> provider can be added later.
+> **Authentication:** ASP.NET Core Identity with cookie authentication. Register at
+> `/register` and sign in at `/login`. Email confirmation is disabled in the MVP (no mail
+> service), so you can sign in immediately after registering.
 
 ### Test
 
@@ -84,7 +84,7 @@ dotnet test MicroExercise.slnx
 
 ## REST API
 
-All endpoints are scoped to the current (demo) user.
+All endpoints require authentication and are scoped to the current user.
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -102,8 +102,9 @@ All endpoints are scoped to the current (demo) user.
 
 ## Database
 
-Four tables (see `docs/` for the full schema): `Users`, `ExerciseTypes` (global lookups),
+Core domain tables (see `docs/` for the full schema): `ExerciseTypes` (global lookups),
 `ExercisePool` (per-user configured exercises, soft-deleted via `IsActive`), and
-`WorkoutLogs` (transactional bursts). The connection string lives in
+`WorkoutLogs` (transactional bursts), alongside the ASP.NET Core Identity tables
+(`AspNetUsers` etc.). The connection string lives in
 `src/MicroExercise.Web/appsettings.json` (`ConnectionStrings:AppDb`) and can be repointed to
 SQL Server or PostgreSQL with a one-line provider change.

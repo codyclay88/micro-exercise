@@ -1,13 +1,14 @@
 using MicroExercise.Core;
 using MicroExercise.Core.Dtos;
 using MicroExercise.Core.Entities;
+using MicroExercise.Infrastructure.Identity;
 using MicroExercise.Infrastructure.Services;
 
 namespace MicroExercise.Tests;
 
 public class LogServiceTests
 {
-    private const int UserId = AppDefaults.DemoUserId;
+    private const int UserId = TestDb.PrimaryUserId;
 
     private static async Task<int> AddPoolEntryAsync(TestDb db, int userId, bool isActive = true)
     {
@@ -47,7 +48,7 @@ public class LogServiceTests
     {
         using var db = new TestDb();
         // Pool belongs to a different user (id 2), but seeded demo user (id 1) tries to log.
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var poolId = await AddPoolEntryAsync(db, userId: 2);
         var sut = new LogService(db.Context);

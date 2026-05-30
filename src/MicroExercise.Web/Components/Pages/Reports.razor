@@ -1,10 +1,11 @@
 @page "/reports"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using MicroExercise.Core.Abstractions
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 @inject IReportService ReportService
-@inject ICurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Micro-Burst · Reports</PageTitle>
 
@@ -73,8 +74,13 @@ else
 
     private IReadOnlyList<ExerciseSummaryDto>? _summary;
     private int _totalBursts;
+    private int _userId;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
+        await LoadAsync();
+    }
 
     private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
     private static string Average(ExerciseSummaryDto r) =>
@@ -98,7 +104,7 @@ else
 
         var start = new DateTimeOffset(_from.ToDateTime(TimeOnly.MinValue));
         var end = new DateTimeOffset(_to.ToDateTime(TimeOnly.MaxValue));
-        var summary = await ReportService.GetSummaryAsync(CurrentUser.UserId, start, end);
+        var summary = await ReportService.GetSummaryAsync(_userId, start, end);
 
         // Most-performed first (volumes aren't comparable across units, but this is a
         // reasonable default ordering within the table).

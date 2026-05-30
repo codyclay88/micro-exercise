@@ -1,11 +1,12 @@
 @page "/"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using MicroExercise.Core.Abstractions
 @using MicroExercise.Core.Dtos
 @inject IPoolService PoolService
 @inject ILogService LogService
 @inject IReportService ReportService
-@inject ICurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Micro-Burst · Log</PageTitle>
 
@@ -48,16 +49,17 @@ else
     private IReadOnlyList<PoolItemDto>? _pool;
     private readonly Dictionary<int, (int Bursts, long Volume)> _today = new();
     private int _totalBurstsToday;
+    private int _userId;
 
     protected override async Task OnInitializedAsync()
     {
-        var userId = CurrentUser.UserId;
-        _pool = await PoolService.GetActivePoolAsync(userId);
+        _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
+        _pool = await PoolService.GetActivePoolAsync(_userId);
 
         // Seed each card with what's already been logged today.
         var start = new DateTimeOffset(DateTime.Today);
         var end = DateTimeOffset.Now;
-        var summary = await ReportService.GetSummaryAsync(userId, start, end);
+        var summary = await ReportService.GetSummaryAsync(_userId, start, end);
         foreach (var row in summary)
             _today[row.ExercisePoolId] = ((int)row.TotalBursts, row.TotalVolume);
 
@@ -66,7 +68,7 @@ else
 
     private async Task LogAsync(PoolItemDto item, int quantity)
     {
-        var result = await LogService.LogAsync(CurrentUser.UserId, new CreateLogRequest(item.Id, quantity));
+        var result = await LogService.LogAsync(_userId, new CreateLogRequest(item.Id, quantity));
         if (result is null)
             return;
 

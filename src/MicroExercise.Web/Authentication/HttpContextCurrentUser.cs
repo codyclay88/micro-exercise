@@ -1,22 +1,16 @@
-using System.Security.Claims;
-using MicroExercise.Core;
 using MicroExercise.Core.Abstractions;
 
 namespace MicroExercise.Web.Authentication;
 
 /// <summary>
-/// Resolves the current user from the authenticated cookie principal. Until real
-/// registration/login exists, an unauthenticated request falls back to the seeded
-/// demo user (spec §2, Authentication — MVP scope).
+/// Resolves the current user id from the authenticated principal for HTTP API requests.
+/// API endpoints require authorization, so a principal is always present here.
+/// (Blazor components resolve the user from <c>AuthenticationState</c> instead, since
+/// <c>HttpContext</c> is not available inside an interactive circuit.)
 /// </summary>
 public class HttpContextCurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {
-    public int UserId
-    {
-        get
-        {
-            var claim = accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return int.TryParse(claim, out var id) ? id : AppDefaults.DemoUserId;
-        }
-    }
+    public int UserId =>
+        accessor.HttpContext?.User.GetUserId()
+        ?? throw new InvalidOperationException("No HttpContext is available.");
 }

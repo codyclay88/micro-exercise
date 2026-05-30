@@ -1,0 +1,73 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using MicroExercise.Infrastructure.Identity
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@attribute [AllowAnonymous]
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Nav
+
+<PageTitle>Micro-Burst · Sign in</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+        <h1 class="h4 mb-3">Sign in</h1>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger py-2" role="alert">@_error</div>
+        }
+
+        <EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="Input.Email" autocomplete="username" />
+                <ValidationMessage For="() => Input.Email" class="text-danger small" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" autocomplete="current-password" />
+                <ValidationMessage For="() => Input.Password" class="text-danger small" />
+            </div>
+            <div class="form-check mb-3">
+                <InputCheckbox id="remember" class="form-check-input" @bind-Value="Input.RememberMe" />
+                <label class="form-check-label" for="remember">Keep me signed in</label>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Sign in</button>
+        </EditForm>
+
+        <p class="text-secondary small mt-3 mb-0">
+            New here? <a href="register">Create an account</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm] private InputModel Input { get; set; } = new();
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    private async Task LoginAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(
+            Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+
+        if (result.Succeeded)
+            Nav.NavigateTo(ReturnUrl ?? "");
+        else
+            _error = "Invalid email or password.";
+    }
+
+    private sealed class InputModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        public bool RememberMe { get; set; }
+    }
+}

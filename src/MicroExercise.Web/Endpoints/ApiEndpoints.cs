@@ -11,7 +11,7 @@ public static class ApiEndpoints
 {
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder app)
     {
-        var api = app.MapGroup("/api");
+        var api = app.MapGroup("/api").RequireAuthorization();
 
         // GET /api/exercises/pool — active quick-log grid for the current user.
         api.MapGet("/exercises/pool", async (

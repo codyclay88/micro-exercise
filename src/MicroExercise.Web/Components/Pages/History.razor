@@ -1,10 +1,11 @@
 @page "/history"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using MicroExercise.Core.Abstractions
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 @inject ILogService LogService
-@inject ICurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Micro-Burst · History</PageTitle>
 
@@ -104,8 +105,13 @@ else
     private DateTime _editTimestamp;
 
     private long? _confirmDeleteId;
+    private int _userId;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
+        await LoadAsync();
+    }
 
     private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
 
@@ -121,7 +127,7 @@ else
 
         var start = new DateTimeOffset(_from.ToDateTime(TimeOnly.MinValue));
         var end = new DateTimeOffset(_to.ToDateTime(TimeOnly.MaxValue));
-        _bursts = await LogService.GetHistoryAsync(CurrentUser.UserId, start, end);
+        _bursts = await LogService.GetHistoryAsync(_userId, start, end);
     }
 
     private void BeginEdit(BurstDto b)
@@ -143,7 +149,7 @@ else
         try
         {
             var request = new UpdateLogRequest(_editQuantity, new DateTimeOffset(_editTimestamp));
-            await LogService.UpdateLogAsync(CurrentUser.UserId, _editingId.Value, request);
+            await LogService.UpdateLogAsync(_userId, _editingId.Value, request);
             await LoadAsync(); // timestamp edits can change ordering — reload to stay correct
         }
         finally
@@ -157,7 +163,7 @@ else
         _busy = true;
         try
         {
-            await LogService.DeleteLogAsync(CurrentUser.UserId, id);
+            await LogService.DeleteLogAsync(_userId, id);
             await LoadAsync();
         }
         finally

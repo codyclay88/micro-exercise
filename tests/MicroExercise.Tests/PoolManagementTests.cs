@@ -1,13 +1,14 @@
 using MicroExercise.Core;
 using MicroExercise.Core.Dtos;
 using MicroExercise.Core.Entities;
+using MicroExercise.Infrastructure.Identity;
 using MicroExercise.Infrastructure.Services;
 
 namespace MicroExercise.Tests;
 
 public class PoolManagementTests
 {
-    private const int UserId = AppDefaults.DemoUserId;
+    private const int UserId = TestDb.PrimaryUserId;
 
     private static async Task<ExercisePool> AddEntryAsync(
         TestDb db, int userId, int exerciseTypeId, int sortOrder, string? custom = null)
@@ -57,7 +58,7 @@ public class PoolManagementTests
     public async Task UpdatePoolItemAsync_NotOwned_ReturnsNull()
     {
         using var db = new TestDb();
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var entry = await AddEntryAsync(db, userId: 2, exerciseTypeId: 1, sortOrder: 0);
         var sut = new PoolService(db.Context);
@@ -125,7 +126,7 @@ public class PoolManagementTests
     public async Task DeactivatePoolItemAsync_NotOwned_ReturnsFalse()
     {
         using var db = new TestDb();
-        db.Context.Users.Add(new User { Id = 2, Email = "other@x.local", DisplayName = "Other" });
+        db.Context.Users.Add(new ApplicationUser { Id = 2, UserName = "other@x.local", Email = "other@x.local", DisplayName = "Other" });
         await db.Context.SaveChangesAsync();
         var entry = await AddEntryAsync(db, userId: 2, exerciseTypeId: 1, sortOrder: 0);
         var sut = new PoolService(db.Context);

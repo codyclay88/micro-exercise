@@ -3,12 +3,24 @@
 <nav class="navbar navbar-expand border-bottom mb-4">
     <div class="container">
         <a class="navbar-brand fw-semibold" href="/">⚡ Micro-Burst</a>
-        <div class="navbar-nav flex-row gap-3 me-auto">
-            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Log</NavLink>
-            <NavLink class="nav-link" href="/history">History</NavLink>
-            <NavLink class="nav-link" href="/reports">Reports</NavLink>
-            <NavLink class="nav-link" href="/pool">Pool</NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="navbar-nav flex-row gap-3 me-auto">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">Log</NavLink>
+                    <NavLink class="nav-link" href="/history">History</NavLink>
+                    <NavLink class="nav-link" href="/reports">Reports</NavLink>
+                    <NavLink class="nav-link" href="/pool">Pool</NavLink>
+                </div>
+                <span class="navbar-text small text-secondary me-3 d-none d-md-inline">@context.User.Identity?.Name</span>
+                <form action="account/logout" method="post" class="me-2">
+                    <AntiforgeryToken />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary border-0">Sign out</button>
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <div class="me-auto"></div>
+            </NotAuthorized>
+        </AuthorizeView>
         @* Interactive on its own: the layout renders statically even when the page is interactive. *@
         <ThemeToggle @rendermode="InteractiveServer" />
     </div>

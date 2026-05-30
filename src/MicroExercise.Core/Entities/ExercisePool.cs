@@ -9,8 +9,8 @@ public class ExercisePool
 {
     public int Id { get; set; }
 
+    /// <summary>Owning user id (FK to the Identity user table, configured in Infrastructure).</summary>
     public int UserId { get; set; }
-    public User? User { get; set; }
 
     public int ExerciseTypeId { get; set; }
     public ExerciseType? ExerciseType { get; set; }

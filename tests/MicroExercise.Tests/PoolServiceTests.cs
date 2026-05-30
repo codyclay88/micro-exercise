@@ -7,7 +7,7 @@ namespace MicroExercise.Tests;
 
 public class PoolServiceTests
 {
-    private const int UserId = AppDefaults.DemoUserId;
+    private const int UserId = TestDb.PrimaryUserId;
 
     [Fact]
     public async Task AddPoolItemAsync_AddsActiveEntry_ThatAppearsInActivePool()

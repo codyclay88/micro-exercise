@@ -1,4 +1,5 @@
 using MicroExercise.Infrastructure.Data;
+using MicroExercise.Infrastructure.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +26,21 @@ public sealed class TestDb : IDisposable
 
         Context = new AppDbContext(options);
         Context.Database.EnsureCreated();
+
+        // Seed the primary test user (id 1). The global exercise catalog is seeded via
+        // HasData; the demo user used to be too, but Identity now owns the users table.
+        Context.Users.Add(new ApplicationUser
+        {
+            Id = PrimaryUserId,
+            UserName = "primary@test.local",
+            Email = "primary@test.local",
+            DisplayName = "Primary"
+        });
+        Context.SaveChanges();
     }
+
+    /// <summary>The user id seeded by this fixture; tests act as this user.</summary>
+    public const int PrimaryUserId = 1;
 
     public AppDbContext Context { get; }
 

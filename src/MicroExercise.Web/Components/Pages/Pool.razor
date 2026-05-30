@@ -1,10 +1,11 @@
 @page "/pool"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @using MicroExercise.Core.Abstractions
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 @inject IPoolService PoolService
-@inject ICurrentUser CurrentUser
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Micro-Burst · Pool</PageTitle>
 
@@ -135,9 +136,11 @@ else
     private int _editTarget;
 
     private int? _confirmRemoveId;
+    private int _userId;
 
     protected override async Task OnInitializedAsync()
     {
+        _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
         _types = await PoolService.GetExerciseTypesAsync();
         _typeNames = _types.ToDictionary(t => t.Id, t => t.Name);
         _addTypeId = _types.FirstOrDefault()?.Id ?? 0;
@@ -151,7 +154,7 @@ else
     {
         _editingId = null;
         _confirmRemoveId = null;
-        _pool = await PoolService.GetActivePoolAsync(CurrentUser.UserId);
+        _pool = await PoolService.GetActivePoolAsync(_userId);
     }
 
     private async Task AddAsync()
@@ -162,7 +165,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.AddPoolItemAsync(CurrentUser.UserId,
+            await PoolService.AddPoolItemAsync(_userId,
                 new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
             _addCustomName = null;
             _addTarget = 10;
@@ -193,7 +196,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.UpdatePoolItemAsync(CurrentUser.UserId, _editingId.Value,
+            await PoolService.UpdatePoolItemAsync(_userId, _editingId.Value,
                 new UpdatePoolItemRequest(_editName, _editTarget));
             await LoadAsync();
         }
@@ -208,7 +211,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.MovePoolItemAsync(CurrentUser.UserId, poolId, up);
+            await PoolService.MovePoolItemAsync(_userId, poolId, up);
             await LoadAsync();
         }
         finally
@@ -222,7 +225,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.DeactivatePoolItemAsync(CurrentUser.UserId, poolId);
+            await PoolService.DeactivatePoolItemAsync(_userId, poolId);
             await LoadAsync();
         }
         finally
