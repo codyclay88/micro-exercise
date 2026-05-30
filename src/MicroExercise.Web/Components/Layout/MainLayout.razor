@@ -8,7 +8,8 @@
             <NavLink class="nav-link" href="/reports">Reports</NavLink>
             <NavLink class="nav-link" href="/pool">Pool</NavLink>
         </div>
-        <ThemeToggle />
+        @* Interactive on its own: the layout renders statically even when the page is interactive. *@
+        <ThemeToggle @rendermode="InteractiveServer" />
     </div>
 </nav>
 
