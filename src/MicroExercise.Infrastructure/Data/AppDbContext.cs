@@ -1,5 +1,6 @@
 using MicroExercise.Core.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace MicroExercise.Infrastructure.Data;
 
@@ -20,5 +21,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         // Apply every IEntityTypeConfiguration in this assembly.
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        // SQLite has no native DateTimeOffset type, so range comparisons (used by the
+        // date-range reports, spec §5.1) don't translate. Storing as an order-preserving
+        // long retains the offset and makes comparisons work. Native providers
+        // (SQL Server / PostgreSQL) support DateTimeOffset directly and wouldn't need this.
+        configurationBuilder.Properties<DateTimeOffset>()
+            .HaveConversion<DateTimeOffsetToBinaryConverter>();
     }
 }

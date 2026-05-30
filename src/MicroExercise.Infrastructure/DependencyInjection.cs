@@ -1,4 +1,6 @@
+using MicroExercise.Core.Abstractions;
 using MicroExercise.Infrastructure.Data;
+using MicroExercise.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +19,10 @@ public static class DependencyInjection
     {
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlite(connectionString));
+
+        services.AddScoped<IPoolService, PoolService>();
+        services.AddScoped<ILogService, LogService>();
+        services.AddScoped<IReportService, ReportService>();
 
         return services;
     }

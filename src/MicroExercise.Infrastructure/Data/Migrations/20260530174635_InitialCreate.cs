@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -35,7 +34,7 @@ namespace MicroExercise.Infrastructure.Data.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
                     DisplayName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    CreatedAt = table.Column<long>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -79,7 +78,7 @@ namespace MicroExercise.Infrastructure.Data.Migrations
                     Id = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     ExercisePoolId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Timestamp = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
+                    Timestamp = table.Column<long>(type: "INTEGER", nullable: false),
                     CompletedQuantity = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
@@ -111,7 +110,7 @@ namespace MicroExercise.Infrastructure.Data.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "DisplayName", "Email" },
-                values: new object[] { 1, new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "Demo User", "demo@microburst.local" });
+                values: new object[] { 1, 1308729802752000000L, "Demo User", "demo@microburst.local" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ExercisePool_ExerciseTypeId",
