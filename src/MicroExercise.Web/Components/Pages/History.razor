@@ -1,0 +1,168 @@
+@page "/history"
+@rendermode InteractiveServer
+@using MicroExercise.Core.Abstractions
+@using MicroExercise.Core.Dtos
+@using MicroExercise.Core.Enums
+@inject ILogService LogService
+@inject ICurrentUser CurrentUser
+
+<PageTitle>Micro-Burst · History</PageTitle>
+
+<h1 class="h4 mb-3">History</h1>
+
+<div class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" class="form-control form-control-sm" @bind="_from" @bind:after="LoadAsync" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" class="form-control form-control-sm" @bind="_to" @bind:after="LoadAsync" />
+    </div>
+</div>
+
+@if (_bursts is null)
+{
+    <p class="text-secondary">Loading…</p>
+}
+else if (_bursts.Count == 0)
+{
+    <p class="text-secondary py-4">No bursts recorded in this range.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Exercise</th>
+                    <th class="text-end">Amount</th>
+                    <th class="text-end" style="width:9rem"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in _bursts)
+                {
+                    <tr>
+                        @if (_editingId == b.Id)
+                        {
+                            <td>
+                                <input type="datetime-local" class="form-control form-control-sm"
+                                       @bind="_editTimestamp" />
+                            </td>
+                            <td>@b.ExerciseName</td>
+                            <td class="text-end">
+                                <div class="input-group input-group-sm" style="max-width:8rem; margin-left:auto;">
+                                    <input type="number" min="1" class="form-control text-end" @bind="_editQuantity" />
+                                    <span class="input-group-text">@Unit(b.TrackingType)</span>
+                                </div>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-primary" @onclick="SaveEditAsync" disabled="@_busy">Save</button>
+                                <button class="btn btn-sm btn-link" @onclick="CancelEdit" disabled="@_busy">Cancel</button>
+                            </td>
+                        }
+                        else
+                        {
+                            <td class="text-nowrap">@b.Timestamp.LocalDateTime.ToString("MMM d, h:mm tt")</td>
+                            <td>@b.ExerciseName</td>
+                            <td class="text-end text-nowrap">@b.Quantity <span class="text-secondary">@Unit(b.TrackingType)</span></td>
+                            <td class="text-end text-nowrap">
+                                @if (_confirmDeleteId == b.Id)
+                                {
+                                    <span class="small text-secondary me-1">Delete?</span>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => DeleteAsync(b.Id)" disabled="@_busy">Yes</button>
+                                    <button class="btn btn-sm btn-link" @onclick="() => _confirmDeleteId = null" disabled="@_busy">No</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary border-0" title="Edit"
+                                            @onclick="() => BeginEdit(b)">✎</button>
+                                    <button class="btn btn-sm btn-outline-danger border-0" title="Delete"
+                                            @onclick="() => _confirmDeleteId = b.Id">✕</button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-secondary small">@_bursts.Count burst@(_bursts.Count == 1 ? "" : "s") shown.</p>
+}
+
+@code {
+    private DateOnly _from = DateOnly.FromDateTime(DateTime.Today).AddDays(-6);
+    private DateOnly _to = DateOnly.FromDateTime(DateTime.Today);
+
+    private IReadOnlyList<BurstDto>? _bursts;
+    private bool _busy;
+
+    private long? _editingId;
+    private int _editQuantity;
+    private DateTime _editTimestamp;
+
+    private long? _confirmDeleteId;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
+
+    private async Task LoadAsync()
+    {
+        _editingId = null;
+        _confirmDeleteId = null;
+        if (_to < _from)
+        {
+            _bursts = Array.Empty<BurstDto>();
+            return;
+        }
+
+        var start = new DateTimeOffset(_from.ToDateTime(TimeOnly.MinValue));
+        var end = new DateTimeOffset(_to.ToDateTime(TimeOnly.MaxValue));
+        _bursts = await LogService.GetHistoryAsync(CurrentUser.UserId, start, end);
+    }
+
+    private void BeginEdit(BurstDto b)
+    {
+        _confirmDeleteId = null;
+        _editingId = b.Id;
+        _editQuantity = b.Quantity;
+        _editTimestamp = b.Timestamp.LocalDateTime;
+    }
+
+    private void CancelEdit() => _editingId = null;
+
+    private async Task SaveEditAsync()
+    {
+        if (_editingId is null || _editQuantity <= 0)
+            return;
+
+        _busy = true;
+        try
+        {
+            var request = new UpdateLogRequest(_editQuantity, new DateTimeOffset(_editTimestamp));
+            await LogService.UpdateLogAsync(CurrentUser.UserId, _editingId.Value, request);
+            await LoadAsync(); // timestamp edits can change ordering — reload to stay correct
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        try
+        {
+            await LogService.DeleteLogAsync(CurrentUser.UserId, id);
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

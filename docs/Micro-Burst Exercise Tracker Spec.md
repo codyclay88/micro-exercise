@@ -65,6 +65,15 @@ A history and aggregation module helping users quantify their distributed daily 
 * **Aggregation Logic:** Groups transactional data sets by ExercisePoolId, executing a SUM(CompletedQuantity) and a COUNT() across records matching the temporal constraints.  
 * **Visual Output:** Clean, tabular reports outlining summary achievements (e.g., *"May 1 \- May 7: Accumulated 450 Push-ups, 120 Pull-ups, and 90 seconds of cumulative Dead Hangs"*).
 
+### **4.4 Burst History & Editing**
+
+Because logging is one tap, accidental or imprecise entries are inevitable. Users must be able to review and correct their recorded bursts after the fact.
+
+* **History View:** A dedicated `/history` page lists individual `WorkoutLog` bursts within a selected date range, most recent first, showing when each burst occurred, the exercise, and the amount.  
+* **Edit:** A burst's quantity *and* timestamp can be corrected in place (inline), e.g. fixing a fat-fingered rep count or the time of day.  
+* **Delete:** A burst can be permanently removed (hard delete, with an inline confirm). Unlike `ExercisePool` soft-deletes, transactional bursts are genuinely discarded — an accidental entry is something the user wants gone, and this keeps report aggregation filter-free.  
+* **Ownership:** All edit/delete operations are scoped to the owning user.
+
 ## **5\. API Endpoint Contract**
 
 The REST contract below remains explicitly decoupled and is exposed via ASP.NET Core Minimal APIs. The Blazor Interactive Server UI may invoke the underlying services directly for lowest latency, while these endpoints serve any external or future clients.  
@@ -78,6 +87,16 @@ Returns: The newly instantiated ExercisePool entity object.
 POST /api/logs  
 Body: { "exercisePoolId": int, "quantity": int }  
 Returns: HTTP 201 Created confirmation of written workout log.
+
+GET  /api/logs?from=YYYY-MM-DD\&to=YYYY-MM-DD  
+Returns: Array of individual bursts in range (most recent first) for the history view.
+
+PUT  /api/logs/{id}  
+Body: { "quantity": int, "timestamp": DateTimeOffset }  
+Returns: The corrected burst, or 404 if not found / not owned by the user.
+
+DELETE /api/logs/{id}  
+Returns: HTTP 204 No Content, or 404 if not found / not owned by the user.
 
 GET  /api/reports/summary?from=YYYY-MM-DD\&to=YYYY-MM-DD  
 Returns: Array of aggregated objects tracking total volume and count per pool item.

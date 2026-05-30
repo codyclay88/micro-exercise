@@ -69,6 +69,44 @@ public static class ApiEndpoints
                 : Results.Created($"/api/logs/{result.Id}", result);
         });
 
+        // GET /api/logs?from=YYYY-MM-DD&to=YYYY-MM-DD — individual bursts for the history view.
+        api.MapGet("/logs", async (
+            DateOnly from, DateOnly to, ILogService logs, ICurrentUser user, CancellationToken ct) =>
+        {
+            if (to < from)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["to"] = ["'to' must be on or after 'from'."]
+                });
+
+            var start = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue));
+            var end = new DateTimeOffset(to.ToDateTime(TimeOnly.MaxValue));
+            var history = await logs.GetHistoryAsync(user.UserId, start, end, ct);
+            return Results.Ok(history);
+        });
+
+        // PUT /api/logs/{id} — correct a burst's quantity and timestamp.
+        api.MapPut("/logs/{id:long}", async (
+            long id, UpdateLogRequest request, ILogService logs, ICurrentUser user, CancellationToken ct) =>
+        {
+            if (request.Quantity <= 0)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["quantity"] = ["Quantity must be greater than zero."]
+                });
+
+            var updated = await logs.UpdateLogAsync(user.UserId, id, request, ct);
+            return updated is null ? Results.NotFound() : Results.Ok(updated);
+        });
+
+        // DELETE /api/logs/{id} — permanently remove a burst.
+        api.MapDelete("/logs/{id:long}", async (
+            long id, ILogService logs, ICurrentUser user, CancellationToken ct) =>
+        {
+            var deleted = await logs.DeleteLogAsync(user.UserId, id, ct);
+            return deleted ? Results.NoContent() : Results.NotFound();
+        });
+
         // GET /api/reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD — aggregated volume per item.
         api.MapGet("/reports/summary", async (
             DateOnly from, DateOnly to, IReportService reports, ICurrentUser user, CancellationToken ct) =>
