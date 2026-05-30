@@ -1,0 +1,25 @@
+@inject IJSRuntime JS
+
+<button type="button" class="btn btn-sm btn-outline-secondary border-0"
+        @onclick="ToggleAsync" title="Toggle light/dark theme" aria-label="Toggle theme">
+    @(_theme == "dark" ? "☀" : "☾")
+</button>
+
+@code {
+    private string _theme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // The current theme was set by the inline script in App.razor.
+            _theme = await JS.InvokeAsync<string>("microburstTheme.current");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _theme = await JS.InvokeAsync<string>("microburstTheme.toggle");
+    }
+}

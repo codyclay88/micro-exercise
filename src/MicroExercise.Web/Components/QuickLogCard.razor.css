@@ -1,0 +1,14 @@
+.quick-log-card .log-button {
+    transition: transform 0.05s ease-in-out;
+}
+
+/* Tactile press feedback — reinforces the "it logged" moment without a modal. */
+.quick-log-card .log-button:active {
+    transform: scale(0.97);
+}
+
+.quick-log-card .stepper {
+    width: 3rem;
+    font-size: 1.25rem;
+    line-height: 1;
+}

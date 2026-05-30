@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
+    <script>
+        // Set the theme before first paint to avoid a flash of the wrong theme.
+        (function () {
+            try {
+                const stored = localStorage.getItem('microburst-theme');
+                const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-bs-theme', stored || system);
+            } catch { document.documentElement.setAttribute('data-bs-theme', 'light'); }
+        })();
+    </script>
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["MicroExercise.Web.styles.css"]" />
@@ -17,6 +27,7 @@
 <body>
     <Routes />
     <ReconnectModal />
+    <script src="@Assets["js/theme.js"]"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 

@@ -1,0 +1,77 @@
+@page "/"
+@rendermode InteractiveServer
+@using MicroExercise.Core.Abstractions
+@using MicroExercise.Core.Dtos
+@inject IPoolService PoolService
+@inject ILogService LogService
+@inject IReportService ReportService
+@inject ICurrentUser CurrentUser
+
+<PageTitle>Micro-Burst · Log</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Today</h1>
+    @if (_pool is not null)
+    {
+        <span class="text-secondary small">@_totalBurstsToday bursts logged today</span>
+    }
+</div>
+
+@if (_pool is null)
+{
+    <p class="text-secondary">Loading…</p>
+}
+else if (_pool.Count == 0)
+{
+    <div class="text-center text-secondary py-5">
+        <p class="mb-2">No exercises in your pool yet.</p>
+        <a class="btn btn-primary" href="/pool">Add your first exercise</a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+        @foreach (var item in _pool)
+        {
+            var stats = _today.GetValueOrDefault(item.Id);
+            <div class="col">
+                <QuickLogCard Item="item"
+                              TodayBursts="stats.Bursts"
+                              TodayVolume="stats.Volume"
+                              OnLog="qty => LogAsync(item, qty)" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PoolItemDto>? _pool;
+    private readonly Dictionary<int, (int Bursts, long Volume)> _today = new();
+    private int _totalBurstsToday;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = CurrentUser.UserId;
+        _pool = await PoolService.GetActivePoolAsync(userId);
+
+        // Seed each card with what's already been logged today.
+        var start = new DateTimeOffset(DateTime.Today);
+        var end = DateTimeOffset.Now;
+        var summary = await ReportService.GetSummaryAsync(userId, start, end);
+        foreach (var row in summary)
+            _today[row.ExercisePoolId] = ((int)row.TotalBursts, row.TotalVolume);
+
+        _totalBurstsToday = summary.Sum(s => s.TotalBursts);
+    }
+
+    private async Task LogAsync(PoolItemDto item, int quantity)
+    {
+        var result = await LogService.LogAsync(CurrentUser.UserId, new CreateLogRequest(item.Id, quantity));
+        if (result is null)
+            return;
+
+        var current = _today.GetValueOrDefault(item.Id);
+        _today[item.Id] = (current.Bursts + 1, current.Volume + quantity);
+        _totalBurstsToday++;
+    }
+}
