@@ -1,6 +1,233 @@
 @page "/pool"
+@rendermode InteractiveServer
+@using MicroExercise.Core.Abstractions
+@using MicroExercise.Core.Dtos
+@using MicroExercise.Core.Enums
+@inject IPoolService PoolService
+@inject ICurrentUser CurrentUser
 
 <PageTitle>Micro-Burst · Pool</PageTitle>
 
 <h1 class="h4 mb-3">Pool</h1>
-<p class="text-secondary">Manage your exercises here. Coming soon.</p>
+
+@if (_pool is null || _types is null)
+{
+    <p class="text-secondary">Loading…</p>
+}
+else
+{
+    <!-- Add an exercise from the global catalog (spec §4.2). -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-3">Add an exercise</h2>
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-0">Exercise</label>
+                    <select class="form-select form-select-sm" @bind="_addTypeId">
+                        @foreach (var t in _types)
+                        {
+                            <option value="@t.Id">@t.Name (@Unit(t.DefaultTrackingType))</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-0">Target</label>
+                    <input type="number" min="1" class="form-control form-control-sm" @bind="_addTarget" />
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-0">Custom name <span class="text-secondary">(optional)</span></label>
+                    <input type="text" maxlength="100" class="form-control form-control-sm"
+                           placeholder="e.g. KB RDL (35 lbs)" @bind="_addCustomName" />
+                </div>
+                <div class="col-12 col-md-2 d-grid">
+                    <button class="btn btn-sm btn-primary" @onclick="AddAsync" disabled="@(_busy || _addTarget <= 0)">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_pool.Count == 0)
+    {
+        <p class="text-secondary py-3">Your pool is empty. Add an exercise above to start logging.</p>
+    }
+    else
+    {
+        <ul class="list-group">
+            @for (var i = 0; i < _pool.Count; i++)
+            {
+                var item = _pool[i];
+                var isFirst = i == 0;
+                var isLast = i == _pool.Count - 1;
+                <li class="list-group-item">
+                    @if (_editingId == item.Id)
+                    {
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-5">
+                                <label class="form-label small mb-0">Custom name</label>
+                                <input type="text" maxlength="100" class="form-control form-control-sm"
+                                       placeholder="@TypeName(item)" @bind="_editName" />
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-0">Target (@Unit(item.TrackingType))</label>
+                                <input type="number" min="1" class="form-control form-control-sm" @bind="_editTarget" />
+                            </div>
+                            <div class="col-6 col-md-4 text-md-end">
+                                <button class="btn btn-sm btn-primary" @onclick="SaveEditAsync" disabled="@_busy">Save</button>
+                                <button class="btn btn-sm btn-link" @onclick="CancelEdit" disabled="@_busy">Cancel</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <div class="btn-group btn-group-sm me-3" role="group" aria-label="Reorder">
+                                <button class="btn btn-outline-secondary" title="Move up"
+                                        @onclick="() => MoveAsync(item.Id, true)" disabled="@(_busy || isFirst)">↑</button>
+                                <button class="btn btn-outline-secondary" title="Move down"
+                                        @onclick="() => MoveAsync(item.Id, false)" disabled="@(_busy || isLast)">↓</button>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-medium">@item.DisplayName</div>
+                                <div class="small text-secondary">
+                                    @item.TargetQuantity @Unit(item.TrackingType)
+                                    @if (!string.Equals(item.DisplayName, TypeName(item), StringComparison.Ordinal))
+                                    {
+                                        <span>· @TypeName(item)</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (_confirmRemoveId == item.Id)
+                            {
+                                <span class="small text-secondary me-1">Remove?</span>
+                                <button class="btn btn-sm btn-danger" @onclick="() => RemoveAsync(item.Id)" disabled="@_busy">Yes</button>
+                                <button class="btn btn-sm btn-link" @onclick="() => _confirmRemoveId = null" disabled="@_busy">No</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary border-0" title="Edit"
+                                        @onclick="() => BeginEdit(item)">✎</button>
+                                <button class="btn btn-sm btn-outline-danger border-0" title="Remove"
+                                        @onclick="() => _confirmRemoveId = item.Id">✕</button>
+                            }
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+        <p class="text-secondary small mt-2">Removing an exercise keeps its past history; it just leaves your dashboard.</p>
+    }
+}
+
+@code {
+    private IReadOnlyList<PoolItemDto>? _pool;
+    private IReadOnlyList<ExerciseTypeDto>? _types;
+    private Dictionary<int, string> _typeNames = new();
+    private bool _busy;
+
+    // Add form
+    private int _addTypeId;
+    private int _addTarget = 10;
+    private string? _addCustomName;
+
+    // Edit state
+    private int? _editingId;
+    private string? _editName;
+    private int _editTarget;
+
+    private int? _confirmRemoveId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _types = await PoolService.GetExerciseTypesAsync();
+        _typeNames = _types.ToDictionary(t => t.Id, t => t.Name);
+        _addTypeId = _types.FirstOrDefault()?.Id ?? 0;
+        await LoadAsync();
+    }
+
+    private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
+    private string TypeName(PoolItemDto item) => _typeNames.GetValueOrDefault(item.ExerciseTypeId, item.DisplayName);
+
+    private async Task LoadAsync()
+    {
+        _editingId = null;
+        _confirmRemoveId = null;
+        _pool = await PoolService.GetActivePoolAsync(CurrentUser.UserId);
+    }
+
+    private async Task AddAsync()
+    {
+        if (_addTarget <= 0 || _addTypeId <= 0)
+            return;
+
+        _busy = true;
+        try
+        {
+            await PoolService.AddPoolItemAsync(CurrentUser.UserId,
+                new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
+            _addCustomName = null;
+            _addTarget = 10;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void BeginEdit(PoolItemDto item)
+    {
+        _confirmRemoveId = null;
+        _editingId = item.Id;
+        // Show the current custom override (empty if it's just using the type name).
+        _editName = string.Equals(item.DisplayName, TypeName(item), StringComparison.Ordinal) ? null : item.DisplayName;
+        _editTarget = item.TargetQuantity;
+    }
+
+    private void CancelEdit() => _editingId = null;
+
+    private async Task SaveEditAsync()
+    {
+        if (_editingId is null || _editTarget <= 0)
+            return;
+
+        _busy = true;
+        try
+        {
+            await PoolService.UpdatePoolItemAsync(CurrentUser.UserId, _editingId.Value,
+                new UpdatePoolItemRequest(_editName, _editTarget));
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task MoveAsync(int poolId, bool up)
+    {
+        _busy = true;
+        try
+        {
+            await PoolService.MovePoolItemAsync(CurrentUser.UserId, poolId, up);
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RemoveAsync(int poolId)
+    {
+        _busy = true;
+        try
+        {
+            await PoolService.DeactivatePoolItemAsync(CurrentUser.UserId, poolId);
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -53,6 +53,36 @@ public static class ApiEndpoints
             }
         });
 
+        // PUT /api/exercises/pool/{id} — customize a pool entry's name/target.
+        api.MapPut("/exercises/pool/{id:int}", async (
+            int id, UpdatePoolItemRequest request, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
+        {
+            if (request.TargetQuantity <= 0)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["targetQuantity"] = ["Target quantity must be greater than zero."]
+                });
+
+            var updated = await pool.UpdatePoolItemAsync(user.UserId, id, request, ct);
+            return updated is null ? Results.NotFound() : Results.Ok(updated);
+        });
+
+        // POST /api/exercises/pool/{id}/move?up=true|false — reorder the dashboard grid.
+        api.MapPost("/exercises/pool/{id:int}/move", async (
+            int id, bool up, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
+        {
+            var moved = await pool.MovePoolItemAsync(user.UserId, id, up, ct);
+            return moved ? Results.NoContent() : Results.NotFound();
+        });
+
+        // DELETE /api/exercises/pool/{id} — soft-delete (preserves history).
+        api.MapDelete("/exercises/pool/{id:int}", async (
+            int id, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
+        {
+            var removed = await pool.DeactivatePoolItemAsync(user.UserId, id, ct);
+            return removed ? Results.NoContent() : Results.NotFound();
+        });
+
         // POST /api/logs — record a single burst against an owned pool item.
         api.MapPost("/logs", async (
             CreateLogRequest request, ILogService logs, ICurrentUser user, CancellationToken ct) =>
