@@ -12,3 +12,47 @@
     font-size: 1.25rem;
     line-height: 1;
 }
+
+/* Card is the positioning context for the keycap hint. */
+.quick-log-card {
+    position: relative;
+}
+
+/* Keyboard hotkey hint (1-9). Hidden on touch-only devices where it's useless. */
+.quick-log-card .key-hint {
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    z-index: 1;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+@media (hover: none) {
+    .quick-log-card .key-hint {
+        display: none;
+    }
+}
+
+/* Brief glow confirming a burst was logged — feedback for mouse-free hotkey use. */
+.quick-log-card.logged-pulse {
+    animation: mb-log-pulse 0.45s ease-out;
+}
+
+@keyframes mb-log-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(var(--bs-primary-rgb), 0.5);
+    }
+    100% {
+        box-shadow: 0 0 0 0.65rem rgba(var(--bs-primary-rgb), 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quick-log-card.logged-pulse {
+        animation: none;
+    }
+}

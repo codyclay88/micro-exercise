@@ -11,7 +11,8 @@ Built as a single .NET solution: an ASP.NET Core **Blazor Web App** front end an
 
 - **One-Click Log dashboard** (`/`) — each exercise is a Quick-Log Card; tap to log the
   configured target, or use the inline `+`/`-` steppers to micro-adjust a single burst.
-  Shows per-card and total counts for today.
+  Shows per-card and total counts for today. **Keyboard hotkeys:** press `1`–`9` to log the
+  matching card's target without the mouse (each card shows its keycap).
 - **History** (`/history`) — review individual bursts over a date range; edit a burst's
   quantity and time, or delete it (with confirm).
 - **Pool management** (`/pool`) — add exercises from the global catalog, give them a custom

@@ -1,12 +1,15 @@
 @page "/"
 @rendermode InteractiveServer
 @attribute [Authorize]
+@implements IAsyncDisposable
 @using MicroExercise.Core.Abstractions
 @using MicroExercise.Core.Dtos
+@using Microsoft.JSInterop
 @inject IPoolService PoolService
 @inject ILogService LogService
 @inject IReportService ReportService
 @inject AuthenticationStateProvider AuthState
+@inject IJSRuntime JS
 
 <PageTitle>Micro-Burst · Log</PageTitle>
 
@@ -32,17 +35,23 @@ else if (_pool.Count == 0)
 else
 {
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
-        @foreach (var item in _pool)
+        @for (var i = 0; i < _pool.Count; i++)
         {
+            var item = _pool[i];
             var stats = _today.GetValueOrDefault(item.Id);
+            int? keyHint = i < 9 ? i + 1 : null;
             <div class="col">
                 <QuickLogCard Item="item"
                               TodayBursts="stats.Bursts"
                               TodayVolume="stats.Volume"
+                              KeyHint="keyHint"
                               OnLog="qty => LogAsync(item, qty)" />
             </div>
         }
     </div>
+    <p class="text-secondary small mt-3 mb-0 d-none d-md-block">
+        Tip: press <kbd>1</kbd>–<kbd>9</kbd> to log a card without the mouse.
+    </p>
 }
 
 @code {
@@ -50,6 +59,7 @@ else
     private readonly Dictionary<int, (int Bursts, long Volume)> _today = new();
     private int _totalBurstsToday;
     private int _userId;
+    private DotNetObjectReference<Dashboard>? _selfRef;
 
     protected override async Task OnInitializedAsync()
     {
@@ -66,6 +76,28 @@ else
         _totalBurstsToday = summary.Sum(s => s.TotalBursts);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("microburstHotkeys.register", _selfRef);
+        }
+    }
+
+    /// <summary>Invoked from hotkeys.js when a 1-9 digit key is pressed. Logs the
+    /// matching card's standard target quantity (mouse-free quick log).</summary>
+    [JSInvokable]
+    public async Task OnHotkey(int number)
+    {
+        if (_pool is null || number < 1 || number > _pool.Count)
+            return;
+
+        var item = _pool[number - 1];
+        await LogAsync(item, item.TargetQuantity);
+        StateHasChanged();
+    }
+
     private async Task LogAsync(PoolItemDto item, int quantity)
     {
         var result = await LogService.LogAsync(_userId, new CreateLogRequest(item.Id, quantity));
@@ -75,5 +107,19 @@ else
         var current = _today.GetValueOrDefault(item.Id);
         _today[item.Id] = (current.Bursts + 1, current.Volume + quantity);
         _totalBurstsToday++;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("microburstHotkeys.unregister");
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is already gone (e.g. browser closed) — nothing to clean up.
+        }
+
+        _selfRef?.Dispose();
     }
 }

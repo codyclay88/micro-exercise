@@ -1,10 +1,15 @@
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 
-<div class="card h-100 shadow-sm quick-log-card">
+<div class="card h-100 shadow-sm quick-log-card @(_pulse ? "logged-pulse" : "")"
+     @onanimationend="() => _pulse = false">
+    @if (KeyHint is not null)
+    {
+        <kbd class="key-hint" aria-hidden="true">@KeyHint</kbd>
+    }
     <div class="card-body d-flex flex-column">
         <div class="d-flex justify-content-between align-items-baseline mb-2">
-            <h2 class="h6 mb-0 text-truncate" title="@Item.DisplayName">@Item.DisplayName</h2>
+            <h2 class="h6 mb-0 text-truncate @(KeyHint is not null ? "ps-4" : "")" title="@Item.DisplayName">@Item.DisplayName</h2>
             <small class="text-secondary text-nowrap ms-2">@TodayBursts today</small>
         </div>
 
@@ -32,11 +37,17 @@
     [Parameter] public int TodayBursts { get; set; }
     [Parameter] public long TodayVolume { get; set; }
 
+    /// <summary>1-9 keyboard hotkey shown as a keycap hint, or null for cards beyond the ninth.</summary>
+    [Parameter] public int? KeyHint { get; set; }
+
     /// <summary>Raised with the quantity to log when the primary action is tapped.</summary>
     [Parameter] public EventCallback<int> OnLog { get; set; }
 
     private int _pending;
     private bool _busy;
+    private bool _pulse;
+    private int _lastBursts;
+    private bool _initialized;
 
     private int Step => Item.TrackingType == TrackingType.Seconds ? 5 : 1;
     private string UnitLabel => Item.TrackingType == TrackingType.Seconds ? "sec" : "reps";
@@ -45,6 +56,12 @@
     {
         if (_pending == 0)
             _pending = Item.TargetQuantity;
+
+        // Pulse whenever a new burst lands (click or hotkey) — but not on first load.
+        if (_initialized && TodayBursts > _lastBursts)
+            _pulse = true;
+        _initialized = true;
+        _lastBursts = TodayBursts;
     }
 
     private void Increment() => _pending += Step;

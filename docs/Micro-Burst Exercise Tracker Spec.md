@@ -76,6 +76,22 @@ Because logging is one tap, accidental or imprecise entries are inevitable. User
 * **Delete:** A burst can be permanently removed (hard delete, with an inline confirm). Unlike `ExercisePool` soft-deletes, transactional bursts are genuinely discarded — an accidental entry is something the user wants gone, and this keeps report aggregation filter-free.  
 * **Ownership:** All edit/delete operations are scoped to the owning user.
 
+### **4.5 Keyboard Hotkeys (Dashboard)**
+
+Reinforces the zero-friction philosophy for desktop/keyboard users: a burst can be logged
+without touching the mouse.
+
+* **Bindings:** On the One-Click Log dashboard, digit keys **1–9** log the matching Quick-Log
+  Card (by display order). Each card shows a small keycap badge (`1`, `2`, …) so the bindings
+  are self-documenting; badges are hidden on touch-only devices.  
+* **Quantity:** A hotkey logs the card's standard `TargetQuantity` (the predictable "log my
+  usual set of exercise N" action); inline `+`/`−` adjustment remains mouse-only.  
+* **Confirmation:** The logged card briefly pulses so the action is visible without watching
+  the cursor.  
+* **Scope & safety:** The listener is active only on the dashboard (removed on navigation) and
+  ignores key-repeat, modifier combinations (Ctrl/Alt/⌘), and keystrokes typed into form
+  fields, so it never hijacks browser shortcuts or text entry.
+
 ## **5\. API Endpoint Contract**
 
 The REST contract below remains explicitly decoupled and is exposed via ASP.NET Core Minimal APIs. The Blazor Interactive Server UI may invoke the underlying services directly for lowest latency, while these endpoints serve any external or future clients.  
@@ -127,5 +143,6 @@ public async Task\<List\<ExerciseSummaryDto\>\> GetSummaryAsync(int userId, Date
 
 ## **6\. Future Roadmaps & Enhancements**
 
-1. **Integrated Desktop Interval Timers:** Visual workspace Pomodoro clock components triggering subtle UI animations or sound notifications when a work interval expires, calling for the next exercise snack.  
-2. **Keyboard Navigation Hotkeys:** Direct bindings matching row indices or numbers 1-6 on full desktop keypads, granting users the ability to log an exercise block entirely mouse-free.
+1. **Integrated Desktop Interval Timers:** Visual workspace Pomodoro clock components triggering subtle UI animations or sound notifications when a work interval expires, calling for the next exercise snack.
+
+*(Keyboard navigation hotkeys, formerly listed here, shipped as §4.5.)*
