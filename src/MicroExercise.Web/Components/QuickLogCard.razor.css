@@ -37,8 +37,10 @@
     }
 }
 
-/* Brief glow confirming a burst was logged — feedback for mouse-free hotkey use. */
-.quick-log-card.logged-pulse {
+/* Brief glow confirming a burst was logged — feedback for mouse-free hotkey use.
+   Two identical classes are alternated so consecutive logs replay the animation. */
+.quick-log-card.logged-pulse-a,
+.quick-log-card.logged-pulse-b {
     animation: mb-log-pulse 0.45s ease-out;
 }
 
@@ -52,7 +54,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .quick-log-card.logged-pulse {
+    .quick-log-card.logged-pulse-a,
+    .quick-log-card.logged-pulse-b {
         animation: none;
     }
 }

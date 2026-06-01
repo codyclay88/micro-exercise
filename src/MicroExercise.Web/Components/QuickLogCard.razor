@@ -1,8 +1,7 @@
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 
-<div class="card h-100 shadow-sm quick-log-card @(_pulse ? "logged-pulse" : "")"
-     @onanimationend="() => _pulse = false">
+<div class="card h-100 shadow-sm quick-log-card @PulseClass">
     @if (KeyHint is not null)
     {
         <kbd class="key-hint" aria-hidden="true">@KeyHint</kbd>
@@ -45,12 +44,16 @@
 
     private int _pending;
     private bool _busy;
-    private bool _pulse;
+    private int _logSeq;        // bumped each time a burst lands; drives the pulse class
     private int _lastBursts;
     private bool _initialized;
 
     private int Step => Item.TrackingType == TrackingType.Seconds ? 5 : 1;
     private string UnitLabel => Item.TrackingType == TrackingType.Seconds ? "sec" : "reps";
+
+    // Alternate between two identical animation classes so each new burst restarts the
+    // pulse (re-adding the same class wouldn't replay it). Empty until the first burst.
+    private string PulseClass => _logSeq == 0 ? "" : (_logSeq % 2 == 1 ? "logged-pulse-a" : "logged-pulse-b");
 
     protected override void OnParametersSet()
     {
@@ -59,7 +62,7 @@
 
         // Pulse whenever a new burst lands (click or hotkey) — but not on first load.
         if (_initialized && TodayBursts > _lastBursts)
-            _pulse = true;
+            _logSeq++;
         _initialized = true;
         _lastBursts = TodayBursts;
     }

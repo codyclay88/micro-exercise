@@ -111,6 +111,12 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        // _selfRef is only set in OnAfterRenderAsync, which never runs during the static
+        // prerender pass — so if it's null there's no JS listener to tear down (and JS
+        // interop would throw during prerender disposal anyway).
+        if (_selfRef is null)
+            return;
+
         try
         {
             await JS.InvokeVoidAsync("microburstHotkeys.unregister");
@@ -120,6 +126,6 @@ else
             // The circuit is already gone (e.g. browser closed) — nothing to clean up.
         }
 
-        _selfRef?.Dispose();
+        _selfRef.Dispose();
     }
 }
