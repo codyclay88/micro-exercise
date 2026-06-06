@@ -1,0 +1,7 @@
+# Caddy reverse proxy. Automatic HTTPS (Let's Encrypt) for the domain in APP_DOMAIN,
+# automatic HTTP->HTTPS redirect, and transparent WebSocket upgrade for Blazor Server's
+# SignalR circuit. Forwarded headers (X-Forwarded-Proto/For) are set by Caddy by default.
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}

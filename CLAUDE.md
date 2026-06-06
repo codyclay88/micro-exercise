@@ -6,7 +6,8 @@ and `docs/Micro-Burst Exercise Tracker Spec.md` for the product/technical spec.
 ## What this is
 
 Micro-Burst Exercise Tracker — a single .NET 10 solution (Blazor Web App + Minimal API +
-EF Core/SQLite) for logging short exercise bursts. Clean Architecture layering.
+EF Core/PostgreSQL) for logging short exercise bursts. Clean Architecture layering. Runs on
+PostgreSQL (Npgsql) in dev and prod; tests use SQLite in-memory.
 
 ## Commands
 
@@ -15,8 +16,12 @@ EF Core/SQLite) for logging short exercise bursts. Clean Architecture layering.
 dotnet build MicroExercise.slnx
 dotnet test  MicroExercise.slnx
 
-# Run the app (from the Web project)
+# Run the app — needs PostgreSQL. Start the dev DB first (published on host port 55432):
+docker compose -f compose.dev.yaml up -d
 cd src/MicroExercise.Web && dotnet run     # http://localhost:5077  (https profile -> :7020)
+
+# Deploy the full production stack (app + Postgres + Caddy TLS) on a Droplet:
+cp .env.example .env && docker compose up -d --build
 
 # Add an EF Core migration — IMPORTANT: Infrastructure is its own startup project here
 dotnet ef migrations add <Name> \
@@ -61,10 +66,12 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
 
 ## Gotchas (learned the hard way)
 
-- **SQLite + DateTimeOffset:** SQLite has no native date type, so `DateTimeOffset` range
-  comparisons don't translate. `AppDbContext.ConfigureConventions` applies
-  `DateTimeOffsetToBinaryConverter` (order-preserving long). A SQL Server/PostgreSQL switch
-  would remove this.
+- **DateTimeOffset is provider-specific (`AppDbContext.ConfigureConventions`):** PostgreSQL
+  maps `DateTimeOffset` to `timestamptz` and **rejects any non-UTC offset** (the app writes
+  `DateTimeOffset.Now`), so the convention normalizes to UTC on write (`DateTimeOffsetUtcConverter`).
+  SQLite (tests only) has no native date type, so it keeps `DateTimeOffsetToBinaryConverter`
+  (order-preserving long). The branch is on `Database.IsSqlite()`. Both preserve instant-ordered
+  range comparisons used by the date-range reports (spec §5.1).
 - **EF `GroupBy` translation:** grouping by a multi-level navigation (e.g.
   `l.ExercisePool.ExerciseType.Name`) fails to translate. Flatten to scalar columns with a
   `.Select(...)` *before* `.GroupBy(...)` — see `ReportService.GetSummaryAsync`.
@@ -74,10 +81,12 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
 - **EF migrations use Infrastructure as the startup project**, because the
   `Microsoft.EntityFrameworkCore.Design` package doesn't flow to Web (dev dependency) and a
   design-time `AppDbContextFactory` lives in Infrastructure.
-- **Dev database is disposable:** `microburst.db*` is git-ignored; `MigrateAsync` runs on
-  startup and the migration seeds the global exercise catalog (user data is created on
-  registration). Delete the files to reset. If you change the model, delete the local DB (or
-  add a migration) — startup `MigrateAsync` won't reconcile a stale schema.
+- **Dev database is a disposable Postgres container:** `compose.dev.yaml` runs `postgres:17`
+  on host port **55432** (avoids a system Postgres on 5432); `appsettings.Development.json`
+  points at it. `MigrateAsync` runs on startup and the migration seeds the global exercise
+  catalog (user data is created on registration). Reset with `docker compose -f compose.dev.yaml
+  down -v`. If you change the model, add a migration — startup `MigrateAsync` won't reconcile a
+  stale schema. EF migrations are **Npgsql-specific** now (one provider, one migration set).
 - `dotnet-ef` tooling may warn it's older than the runtime (e.g. 10.0.0 vs 10.0.8) — cosmetic.
 
 ## Auth (ASP.NET Core Identity)

@@ -1,0 +1,29 @@
+# Local development database only.
+#
+#   docker compose -f compose.dev.yaml up -d
+#   cd src/MicroExercise.Web && dotnet run    # connects via appsettings.Development.json
+#
+# Published on host port 55432 (not 5432) to avoid clashing with a system-installed
+# PostgreSQL that already owns the 5432/5433 range. Inside containers the port is still 5432.
+#
+# The app itself runs on the host (so `dotnet run`/hot reload work normally); only Postgres
+# runs in a container. Matches the production provider for dev/prod parity.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: microburst
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "55432:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d microburst"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata-dev:

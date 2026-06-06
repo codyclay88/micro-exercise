@@ -27,6 +27,11 @@ appsettings.*.local.json
 *.Development.local.json
 secrets.json
 
+# Deployment secrets / reverse-proxy state (see .env.example, compose.yaml)
+.env
+caddy_data/
+caddy_config/
+
 # OS cruft
 Thumbs.db
 .DS_Store

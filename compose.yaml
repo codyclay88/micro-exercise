@@ -1,0 +1,57 @@
+# Production stack for a single DigitalOcean Droplet: app + PostgreSQL + Caddy (TLS).
+#
+#   cp .env.example .env   # then fill in real values
+#   docker compose up -d --build
+#
+# Caddy obtains/renews a Let's Encrypt certificate for APP_DOMAIN automatically and proxies
+# HTTPS traffic to the app over the internal network. Data survives restarts via named volumes.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Connection string for the app (Host=db is the Postgres service on the Compose network).
+      ConnectionStrings__AppDb: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+    volumes:
+      # Persist Data Protection keys so auth cookies/antiforgery survive redeploys.
+      - dpkeys:/keys
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  dpkeys:
+  caddy_data:
+  caddy_config:

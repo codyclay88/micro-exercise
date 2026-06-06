@@ -18,7 +18,7 @@ public static class DependencyInjection
         string connectionString)
     {
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure()));
 
         services.AddScoped<IPoolService, PoolService>();
         services.AddScoped<ILogService, LogService>();

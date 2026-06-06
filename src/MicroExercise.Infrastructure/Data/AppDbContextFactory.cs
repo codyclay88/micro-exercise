@@ -13,7 +13,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite("Data Source=microburst.design.db")
+            .UseNpgsql("Host=localhost;Port=55432;Database=microburst;Username=postgres;Password=postgres")
             .Options;
 
         return new AppDbContext(options);

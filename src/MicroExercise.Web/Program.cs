@@ -7,6 +7,8 @@ using MicroExercise.Web.Authentication;
 using MicroExercise.Web.Components;
 using MicroExercise.Web.Endpoints;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +21,26 @@ builder.Services.AddRazorComponents()
 var connectionString = builder.Configuration.GetConnectionString("AppDb")
     ?? throw new InvalidOperationException("Connection string 'AppDb' was not found.");
 builder.Services.AddInfrastructure(connectionString);
+
+// Behind the production reverse proxy (Caddy), TLS terminates at the proxy and the app is
+// reached over plain HTTP. Honor X-Forwarded-Proto/For so the request is seen as HTTPS
+// (Identity then marks its auth cookie Secure and UseHttpsRedirection won't loop). The proxy
+// address is dynamic inside the Compose network, so trust the forwarding chain there.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Persist Data Protection keys outside the container so auth cookies and antiforgery tokens
+// survive redeploys (the default in-container key ring is ephemeral and would log everyone out
+// on every deploy). The path is a mounted volume in compose.yaml. Dev keeps the default ring.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo("/keys"));
+}
 
 // --- ASP.NET Core Identity (cookie auth, integer keys) ---
 builder.Services.AddCascadingAuthenticationState();
@@ -72,6 +94,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
+
+// Apply proxy-forwarded scheme/host before anything that inspects the request (auth,
+// redirects). No-op in dev where there's no proxy and no forwarded headers are sent.
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

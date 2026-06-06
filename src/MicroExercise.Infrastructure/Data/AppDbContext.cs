@@ -31,11 +31,30 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         base.ConfigureConventions(configurationBuilder);
 
-        // SQLite has no native DateTimeOffset type, so range comparisons (used by the
-        // date-range reports, spec §5.1) don't translate. Storing as an order-preserving
-        // long retains the offset and makes comparisons work. Native providers
-        // (SQL Server / PostgreSQL) support DateTimeOffset directly and wouldn't need this.
-        configurationBuilder.Properties<DateTimeOffset>()
-            .HaveConversion<DateTimeOffsetToBinaryConverter>();
+        // DateTimeOffset handling is provider-specific:
+        if (Database.IsSqlite())
+        {
+            // SQLite (used by the in-memory test DB) has no native DateTimeOffset type, so
+            // range comparisons (the date-range reports, spec §5.1) don't translate. Storing
+            // as an order-preserving long makes comparisons work by UTC instant.
+            configurationBuilder.Properties<DateTimeOffset>()
+                .HaveConversion<DateTimeOffsetToBinaryConverter>();
+        }
+        else
+        {
+            // PostgreSQL maps DateTimeOffset to `timestamptz` and rejects any non-UTC offset
+            // (the app writes DateTimeOffset.Now, and history edits accept a client timestamp).
+            // Normalizing to UTC on write keeps every write site safe and preserves
+            // instant-ordered range comparisons.
+            configurationBuilder.Properties<DateTimeOffset>()
+                .HaveConversion<DateTimeOffsetUtcConverter>();
+        }
     }
+
+    /// <summary>
+    /// Normalizes a <see cref="DateTimeOffset"/> to UTC on the way to the database. Required
+    /// for Npgsql's <c>timestamptz</c> mapping, which only accepts a zero (UTC) offset.
+    /// </summary>
+    private sealed class DateTimeOffsetUtcConverter()
+        : ValueConverter<DateTimeOffset, DateTimeOffset>(v => v.ToUniversalTime(), v => v);
 }

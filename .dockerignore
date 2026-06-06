@@ -1,0 +1,23 @@
+# Keep the build context small and the image clean.
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+.git/
+.gitignore
+
+# Local databases / secrets / proxy state — never bake into the image.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+.env
+caddy_data/
+caddy_config/
+
+# Docs and host-only files aren't needed at runtime.
+**/*.user
+Thumbs.db
+.DS_Store
