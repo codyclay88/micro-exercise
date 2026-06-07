@@ -1,13 +1,19 @@
-# Multi-stage build for the Micro-Burst Exercise Tracker (Blazor Web App + Minimal API).
-# Build with the .NET SDK, then ship only the framework-dependent runtime image.
+# Multi-stage build for the Micro-Burst Exercise Tracker: a stateless ASP.NET Core API/host
+# that serves the Blazor WebAssembly SPA (MicroExercise.Client). Build with the .NET SDK +
+# WASM workload, then ship only the framework-dependent runtime image.
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+
+# NB: we deliberately do NOT install the wasm-tools workload. It would enable native
+# relinking on publish (Emscripten + Python), which is heavy/slow and pointless here — the
+# standard interpreter runtime publishes fine and is plenty fast for this app.
 
 # Restore first (cached unless project files change). Copy the solution + csproj layout.
 COPY MicroExercise.slnx ./
 COPY src/MicroExercise.Core/MicroExercise.Core.csproj          src/MicroExercise.Core/
 COPY src/MicroExercise.Infrastructure/MicroExercise.Infrastructure.csproj src/MicroExercise.Infrastructure/
+COPY src/MicroExercise.Client/MicroExercise.Client.csproj      src/MicroExercise.Client/
 COPY src/MicroExercise.Web/MicroExercise.Web.csproj            src/MicroExercise.Web/
 RUN dotnet restore src/MicroExercise.Web/MicroExercise.Web.csproj
 

@@ -5,9 +5,10 @@ and `docs/Micro-Burst Exercise Tracker Spec.md` for the product/technical spec.
 
 ## What this is
 
-Micro-Burst Exercise Tracker — a single .NET 10 solution (Blazor Web App + Minimal API +
-EF Core/PostgreSQL) for logging short exercise bursts. Clean Architecture layering. Runs on
-PostgreSQL (Npgsql) in dev and prod; tests use SQLite in-memory.
+Micro-Burst Exercise Tracker — a single .NET 10 solution: a **Blazor WebAssembly** SPA talking
+to an ASP.NET Core Minimal-API backend over HTTP, EF Core/PostgreSQL. Clean Architecture
+layering. The server is **stateless — no SignalR/Blazor Server circuit**. Runs on PostgreSQL
+(Npgsql) in dev and prod; tests use SQLite in-memory.
 
 ## Commands
 
@@ -35,8 +36,8 @@ There is no `.sln` — use `MicroExercise.slnx`.
 ## Architecture & layering (do not violate)
 
 ```
-Web  ->  Infrastructure  ->  Core
- \_____________________________/
+Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
+       \_______________________________________________/   (Client also -> Core, for DTOs)
 ```
 
 - **Core** (`src/MicroExercise.Core`) — entities, enums, DTOs, service interfaces. **No
@@ -44,14 +45,21 @@ Web  ->  Infrastructure  ->  Core
 - **Infrastructure** (`src/MicroExercise.Infrastructure`) — `AppDbContext`, EF
   configurations, migrations, seeding, and the service *implementations* of Core's
   interfaces. References Core only.
-- **Web** (`src/MicroExercise.Web`) — Blazor components, Minimal API endpoints, DI wiring,
-  auth. The composition root; references both Core and Infrastructure.
+- **Client** (`src/MicroExercise.Client`) — the Blazor **WebAssembly** SPA (all the app UI:
+  Dashboard/History/Pool/Reports + layout). Calls the REST API via typed clients in
+  `Client/Services` (`PoolApi`/`LogApi`/`ReportApi`); auth state via `CookieAuthStateProvider`.
+  References **Core only** (shared DTOs). Runs in the browser — no server services here.
+- **Web** (`src/MicroExercise.Web`) — Minimal API endpoints, the SPA host
+  (`UseBlazorFrameworkFiles` + `MapFallbackToFile("index.html")`), static-SSR auth pages
+  (`Components/Account`), DI, auth. Composition root; references Core, Infrastructure, **and
+  Client** (to host it).
 
 Services are registered in `Infrastructure/DependencyInjection.cs` (`AddInfrastructure`).
 API endpoints are mapped in `Web/Endpoints/ApiEndpoints.cs` (`MapApiEndpoints`).
 
 Services take an explicit `int userId` parameter (not an ambient accessor) — keeps them
-testable. The Web layer resolves the current user via `ICurrentUser` and passes it in.
+testable. The API endpoints resolve the current user via `ICurrentUser` and pass it in; the
+WASM client never sends a userId (the server derives it from the cookie).
 
 ## Conventions
 
@@ -61,8 +69,11 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
   `null`/`false` when the entity isn't found or isn't owned; endpoints map that to 404.
 - `ExercisePool` uses **soft delete** (`IsActive`) to preserve history. `WorkoutLog`
   deletes are **hard** (an accidental burst should truly disappear; keeps reports filter-free).
-- Enums (`TrackingType`) are persisted as strings and serialized as strings in JSON.
-- Blazor pages that need interactivity declare `@rendermode InteractiveServer`.
+- Enums (`TrackingType`) are persisted as strings and serialized as strings in JSON. The WASM
+  client's `HttpClient` uses `ApiJson.Options` (web defaults + `JsonStringEnumConverter`) to match.
+- The UI is **all WebAssembly** — pages are in `Client/Pages`, call the typed API clients, and
+  have **no `@rendermode`** (there's no Blazor Server render mode anymore). Page mutations reload
+  via the API; there's no shared server-side component state.
 
 ## Gotchas (learned the hard way)
 
@@ -75,9 +86,19 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
 - **EF `GroupBy` translation:** grouping by a multi-level navigation (e.g.
   `l.ExercisePool.ExerciseType.Name`) fails to translate. Flatten to scalar columns with a
   `.Select(...)` *before* `.GroupBy(...)` — see `ReportService.GetSummaryAsync`.
-- **Layout components aren't interactive automatically:** a page's `@rendermode` does not
-  flow to the layout around it. Components in `MainLayout` that need interactivity must set
-  their own render mode (e.g. `<ThemeToggle @rendermode="InteractiveServer" />`).
+- **Hosting the WASM client:** use `app.UseBlazorFrameworkFiles()` + `app.UseStaticFiles()`
+  **before** `app.UseRouting()`, then `app.MapFallbackToFile("index.html")` last. Do **not** use
+  `MapStaticAssets()` — its fingerprinted endpoints can't serve the Blazor `_framework/*` files
+  and it 500s. (So the server `App.razor` and `index.html` reference assets by plain path, not
+  `@Assets`/`ImportMap`.)
+- **Shared static assets** (bootstrap, `app.css`, `js/theme.js`, `js/hotkeys.js`, favicon) live
+  in **`Web/wwwroot`** and are referenced by absolute path from `Client/wwwroot/index.html`
+  (which holds only `index.html`). No duplication across projects.
+- **`BlazorDisableThrowNavigationException`** is set in **both** Web and Client csproj — the
+  client's `RedirectToLogin` does a `forceLoad` navigation that otherwise surfaces a benign
+  `NavigationException` (and trips the `#blazor-error-ui` bar).
+- **`#blazor-error-ui` CSS lives in `Web/wwwroot/app.css`** (shared). It must include
+  `display:none` or the error bar shows permanently (the runtime toggles it on real errors).
 - **EF migrations use Infrastructure as the startup project**, because the
   `Microsoft.EntityFrameworkCore.Design` package doesn't flow to Web (dev dependency) and a
   design-time `AppDbContextFactory` lives in Infrastructure.
@@ -93,18 +114,19 @@ testable. The Web layer resolves the current user via `ICurrentUser` and passes 
 
 - `ApplicationUser : IdentityUser<int>` (Infrastructure/Identity) — **int keys** to match the
   schema. `AppDbContext` is an `IdentityDbContext<ApplicationUser, IdentityRole<int>, int>`.
-- Register/Login/Logout are **static SSR** components in `Components/Account` (the auth cookie
-  must be written on an HTTP request, not over the SignalR circuit). Registration seeds a few
-  starter pool items, then signs in. Email confirmation is **off** (no mail service).
-- The Identity application cookie's `LoginPath` is set to `/login` in `Program.cs` — the
-  default would be `/Account/Login`. `[Authorize]` on a page is enforced at the endpoint
-  (server-side), so an unauthenticated request is redirected by the cookie middleware before
-  the `AuthorizeRouteView`/`RedirectToLogin` fallback runs.
-- **Resolving the current user differs by context:** Blazor components read it from
-  `AuthenticationStateProvider` / `AuthenticationState` (HttpContext is null in a circuit) via
-  `ClaimsPrincipal.GetUserId()`; the HTTP API uses `ICurrentUser` (`HttpContextCurrentUser`)
-  and the `/api` group has `.RequireAuthorization()`. Services themselves take an explicit
-  `int userId` and stay auth-agnostic.
+- Register/Login/Logout are **static SSR** (server-rendered) in `Components/Account` + the
+  logout endpoint in `Program.cs` — the auth cookie must be written on a real HTTP request, not
+  from WASM. Registration seeds a few starter pool items, then signs in. Email confirmation is
+  **off** (no mail service). The login/register forms keep antiforgery; logout `.DisableAntiforgery()`.
+- The Identity application cookie's `LoginPath` is `/login`. **Cookie events return 401/403 for
+  `/api`** (not a 302 redirect) — see `ConfigureApplicationCookie` `OnRedirectToLogin` — so the
+  WASM client's `fetch` sees a clean 401 instead of silently following a redirect to HTML.
+- **WASM auth state:** `CookieAuthStateProvider` (Client) calls `GET /api/auth/me` (rides the
+  cookie) to build its `ClaimsPrincipal`; on 401 it's anonymous → `AuthorizeRouteView` →
+  `RedirectToLogin` (forceLoad to `/login`). The HTTP API uses `ICurrentUser`
+  (`HttpContextCurrentUser`); the `/api` group has `.RequireAuthorization()` and
+  **`.DisableAntiforgery()`** (same-origin JSON + SameSite=Lax cookie is the CSRF posture).
+  Services take an explicit `int userId` and stay auth-agnostic.
 
 ## Testing
 

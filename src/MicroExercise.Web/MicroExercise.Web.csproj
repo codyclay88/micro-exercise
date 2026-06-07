@@ -3,6 +3,12 @@
   <ItemGroup>
     <ProjectReference Include="..\MicroExercise.Core\MicroExercise.Core.csproj" />
     <ProjectReference Include="..\MicroExercise.Infrastructure\MicroExercise.Infrastructure.csproj" />
+    <!-- Hosts the Blazor WebAssembly SPA: publishing Web emits the client's static assets. -->
+    <ProjectReference Include="..\MicroExercise.Client\MicroExercise.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
   </ItemGroup>
 
   <PropertyGroup>

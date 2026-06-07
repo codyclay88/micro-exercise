@@ -6,7 +6,6 @@ using MicroExercise.Infrastructure.Identity;
 using MicroExercise.Web.Authentication;
 using MicroExercise.Web.Components;
 using MicroExercise.Web.Endpoints;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -14,9 +13,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+// Razor Components are static-SSR only now (login/register/error). The app UI is a separate
+// Blazor WebAssembly SPA (MicroExercise.Client) served as static files — no SignalR circuit.
+builder.Services.AddRazorComponents();
 
 var connectionString = builder.Configuration.GetConnectionString("AppDb")
     ?? throw new InvalidOperationException("Connection string 'AppDb' was not found.");
@@ -43,15 +42,16 @@ if (!builder.Environment.IsDevelopment())
 }
 
 // --- ASP.NET Core Identity (cookie auth, integer keys) ---
-builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
-
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
         options.DefaultSignInScheme = IdentityConstants.ApplicationScheme;
     })
     .AddIdentityCookies();
+
+// Authorization services (the /api group uses RequireAuthorization). Previously pulled in
+// transitively by the interactive-server components stack, which is now gone.
+builder.Services.AddAuthorization();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
@@ -76,6 +76,26 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.ExpireTimeSpan = TimeSpan.FromDays(30);
     options.SlidingExpiration = true;
+
+    // The WASM client calls /api over fetch; an unauthenticated request must get a 401/403
+    // (so the client knows to send the user to /login) rather than a 302 redirect to the
+    // HTML login page, which fetch would silently follow. Browser navigations still redirect.
+    options.Events.OnRedirectToLogin = ctx =>
+    {
+        if (ctx.Request.Path.StartsWithSegments("/api"))
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        else
+            ctx.Response.Redirect(ctx.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = ctx =>
+    {
+        if (ctx.Request.Path.StartsWithSegments("/api"))
+            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+        else
+            ctx.Response.Redirect(ctx.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 builder.Services.AddHttpContextAccessor();
@@ -105,24 +125,32 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+// Serve the WASM client's framework files (_framework/*) and the static assets in wwwroot
+// BEFORE routing, so they short-circuit the index.html fallback. (Classic UseStaticFiles, not
+// MapStaticAssets — the latter's fingerprinted endpoints can't serve the Blazor _framework files.)
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseAntiforgery();
 
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>();   // static SSR: login / register / error
 app.MapApiEndpoints();
 
 // Sign out (posted from the nav). The matching login/register live in Components/Account.
+// Antiforgery disabled so the WASM client's plain form POST works (logout just clears the cookie).
 app.MapPost("/account/logout", async (SignInManager<ApplicationUser> signInManager) =>
 {
     await signInManager.SignOutAsync();
     return Results.LocalRedirect("/login");
-});
+}).DisableAntiforgery();
+
+// Everything not matched above (the SPA's client-side routes) returns the WASM host page.
+app.MapFallbackToFile("index.html");
 
 app.Run();

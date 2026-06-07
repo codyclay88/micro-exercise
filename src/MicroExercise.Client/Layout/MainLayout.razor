@@ -13,7 +13,6 @@
                 </div>
                 <span class="navbar-text small text-secondary me-3 d-none d-md-inline">@context.User.Identity?.Name</span>
                 <form action="account/logout" method="post" class="me-2">
-                    <AntiforgeryToken />
                     <button type="submit" class="btn btn-sm btn-outline-secondary border-0">Sign out</button>
                 </form>
             </Authorized>
@@ -21,17 +20,10 @@
                 <div class="me-auto"></div>
             </NotAuthorized>
         </AuthorizeView>
-        @* Interactive on its own: the layout renders statically even when the page is interactive. *@
-        <ThemeToggle @rendermode="InteractiveServer" />
+        <ThemeToggle />
     </div>
 </nav>
 
 <main class="container pb-5">
     @Body
 </main>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>

@@ -4,8 +4,10 @@ A zero-friction web app for logging short (2–5 minute) bursts of exercise — 
 snacking" / Greasing the Groove — so desk workers can record reps or seconds in a single
 tap and get back to work, then review their accumulated volume over time.
 
-Built as a single .NET solution: an ASP.NET Core **Blazor Web App** front end and REST API,
-**Entity Framework Core** over **SQLite**, all in one codebase.
+Built as a single .NET solution: a **Blazor WebAssembly** SPA front end talking to an ASP.NET
+Core **REST API** over the wire, **Entity Framework Core** over **PostgreSQL**, all in one
+codebase. The server is stateless (no SignalR circuit) — it serves the API, the compiled WASM
+client, and the server-rendered sign-in pages.
 
 ## Features
 
@@ -27,8 +29,8 @@ Built as a single .NET solution: an ASP.NET Core **Blazor Web App** front end an
 | Layer | Choice |
 |---|---|
 | Runtime | .NET 10 |
-| UI | Blazor Web App (Interactive Server render mode), Bootstrap 5.3 |
-| API | ASP.NET Core Minimal APIs |
+| UI | Blazor **WebAssembly** SPA (`MicroExercise.Client`), Bootstrap 5.3 |
+| API | ASP.NET Core Minimal APIs (stateless; also hosts the SPA + static SSR auth pages) |
 | Data | Entity Framework Core 10 + PostgreSQL (Npgsql); SQLite in-memory for tests |
 | Auth | Cookie authentication (HttpOnly/SameSite) |
 | Tests | xUnit (EF Core SQLite in-memory) |
@@ -43,15 +45,19 @@ src/
   MicroExercise.Infrastructure/        EF Core data access + service implementations
     Data/ (AppDbContext, Configurations, Migrations, SeedData)
     Services/ (PoolService, LogService, ReportService)
-  MicroExercise.Web/                   Blazor UI + Minimal API (composition root)
-    Components/ (Pages, Layout)  Endpoints/  Authentication/
+  MicroExercise.Client/                Blazor WebAssembly SPA (the UI)
+    Pages/  Components/  Layout/  Services/ (typed API clients)  Authentication/
+  MicroExercise.Web/                   Minimal API + SPA host + SSR auth (composition root)
+    Components/Account/ (Login, Register)  Endpoints/  Authentication/
 tests/
   MicroExercise.Tests/                 xUnit service tests
 docs/                                  Product/technical spec
 ```
 
-Dependencies point inward: **Web → Infrastructure → Core**. Core has no framework
-dependencies, so the domain is testable and the database is swappable.
+Dependencies point inward: **Web → Infrastructure → Core**, and **Client → Core** (shared
+DTOs). Core has no framework dependencies, so the domain is testable and the DTOs are reused by
+both the API and the WASM client. The browser runs the WASM client, which calls the REST API
+with the auth cookie attached.
 
 ## Getting started
 
@@ -92,10 +98,13 @@ dotnet test MicroExercise.slnx
 
 ## REST API
 
-All endpoints require authentication and are scoped to the current user.
+The WASM client talks to these endpoints over `HttpClient` (cookie auth). All require
+authentication and are scoped to the current user; antiforgery is disabled on `/api` (the
+client is same-origin JSON with a SameSite cookie — see the auth note below).
 
 | Method | Route | Purpose |
 |---|---|---|
+| `GET` | `/api/auth/me` | Current user's identity (lets the SPA establish auth state) |
 | `GET` | `/api/exercises/pool` | Active pool for the dashboard grid |
 | `GET` | `/api/exercises/types` | Global exercise catalog |
 | `POST` | `/api/exercises/pool` | Add an exercise to the pool |

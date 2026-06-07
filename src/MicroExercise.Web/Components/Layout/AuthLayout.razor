@@ -1,0 +1,13 @@
+@inherits LayoutComponentBase
+
+@* Minimal static-SSR layout for the account pages (login / register / error). The main app
+   navbar + theme toggle live in the WASM client; these pages just need the brand + a container. *@
+<nav class="navbar navbar-expand border-bottom mb-4">
+    <div class="container">
+        <a class="navbar-brand fw-semibold" href="/">⚡ Micro-Burst</a>
+    </div>
+</nav>
+
+<main class="container pb-5">
+    @Body
+</main>

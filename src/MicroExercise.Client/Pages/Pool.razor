@@ -1,11 +1,6 @@
 @page "/pool"
-@rendermode InteractiveServer
 @attribute [Authorize]
-@using MicroExercise.Core.Abstractions
-@using MicroExercise.Core.Dtos
-@using MicroExercise.Core.Enums
-@inject IPoolService PoolService
-@inject AuthenticationStateProvider AuthState
+@inject PoolApi PoolApi
 
 <PageTitle>Micro-Burst · Pool</PageTitle>
 
@@ -163,11 +158,9 @@ else
     private int _editTarget;
 
     private int? _confirmRemoveId;
-    private int _userId;
 
     protected override async Task OnInitializedAsync()
     {
-        _userId = (await AuthState.GetAuthenticationStateAsync()).User.GetUserId();
         await RefreshTypesAsync();
         _addTypeId = _types!.FirstOrDefault()?.Id ?? CustomSentinel;
         await LoadAsync();
@@ -180,12 +173,12 @@ else
     {
         _editingId = null;
         _confirmRemoveId = null;
-        _pool = await PoolService.GetActivePoolAsync(_userId);
+        _pool = await PoolApi.GetActivePoolAsync();
     }
 
     private async Task RefreshTypesAsync()
     {
-        _types = await PoolService.GetExerciseTypesAsync(_userId);
+        _types = await PoolApi.GetExerciseTypesAsync();
         _typeNames = _types.ToDictionary(t => t.Id, t => t.Name);
     }
 
@@ -202,7 +195,7 @@ else
                 if (string.IsNullOrWhiteSpace(_newName))
                     return;
 
-                await PoolService.AddCustomExerciseAsync(_userId,
+                await PoolApi.AddCustomExerciseAsync(
                     new CreateCustomExerciseRequest(_newName.Trim(), _newTrackingType, _addTarget));
                 _newName = null;
                 _newTrackingType = TrackingType.Reps;
@@ -210,7 +203,7 @@ else
             }
             else
             {
-                await PoolService.AddPoolItemAsync(_userId,
+                await PoolApi.AddPoolItemAsync(
                     new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
                 _addCustomName = null;
             }
@@ -243,7 +236,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.UpdatePoolItemAsync(_userId, _editingId.Value,
+            await PoolApi.UpdatePoolItemAsync(_editingId.Value,
                 new UpdatePoolItemRequest(_editName, _editTarget));
             await LoadAsync();
         }
@@ -258,7 +251,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.MovePoolItemAsync(_userId, poolId, up);
+            await PoolApi.MovePoolItemAsync(poolId, up);
             await LoadAsync();
         }
         finally
@@ -272,7 +265,7 @@ else
         _busy = true;
         try
         {
-            await PoolService.DeactivatePoolItemAsync(_userId, poolId);
+            await PoolApi.DeactivatePoolItemAsync(poolId);
             await LoadAsync();
         }
         finally

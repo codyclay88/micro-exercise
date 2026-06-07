@@ -12,7 +12,7 @@
     {
         if (firstRender)
         {
-            // The current theme was set by the inline script in App.razor.
+            // The current theme was set by the inline script in index.html.
             _theme = await JS.InvokeAsync<string>("microburstTheme.current");
             StateHasChanged();
         }

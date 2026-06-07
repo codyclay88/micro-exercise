@@ -11,7 +11,7 @@ The Micro-Burst Exercise Tracker is designed specifically for desk workers, remo
 
 ## **2\. Tech Stack Architecture**
 
-* **Frontend:** **Blazor Web App** (unified .NET 10 template) using the **Interactive Server** render mode by default. UI events round-trip over SignalR, eliminating client-side API serialization and delivering the low-latency "one-click" feel the philosophy demands; individual components may opt into WebAssembly later if needed. Responsive layout via **Bootstrap 5** (ships with the template, no separate JS build step). The UI must optimize for both mobile web viewports and pinned/split-screen desktop browsers.  
+* **Frontend:** **Blazor WebAssembly** SPA (`MicroExercise.Client`), served as static files by the ASP.NET Core host and talking to the REST API (§5) over `HttpClient` with cookie auth. Running the UI in the browser keeps the server **stateless** (no SignalR circuit to hold per-user in RAM), which scales on small/cheap infrastructure and is resilient to flaky mobile connections; after the initial load, one-click logging and the inline steppers are local with no per-interaction round-trip. Responsive layout via **Bootstrap 5**. The UI must optimize for both mobile web viewports and pinned/split-screen desktop browsers. *(Sign-in/registration are server-rendered (static SSR) so the auth cookie is written on a real HTTP request.)*  
 * **Backend:** ASP.NET Core (**.NET 10**, the current LTS), optimized for high-performance, low-latency transactional logging. The REST API (§5) is exposed via Minimal APIs and is consumed by the Blazor UI as well as any future clients.  
 * **Database:** **PostgreSQL** via Entity Framework Core (Npgsql provider) in both development and production, for dev/prod parity. Local development runs Postgres in a Docker container (`compose.dev.yaml`); production runs it alongside the app on a single host (`compose.yaml`). The EF Core migration set is Npgsql-specific. The automated test suite uses an in-memory SQLite database (schema created from the model via `EnsureCreated`, which is provider-agnostic), so tests need no running database.  
 * **Authentication:** **ASP.NET Core Identity** with secure, HttpOnly, SameSite cookie authentication for seamless, long-lived desktop sessions without client-side token refresh overhead. Users register and sign in via themed pages (`/register`, `/login`); Identity uses integer keys to match the rest of the schema (`AspNetUsers` etc.). New registrations receive a few starter exercises. Email confirmation is disabled in the MVP (no mail service yet); all application pages and API endpoints require authorization.
@@ -94,7 +94,7 @@ without touching the mouse.
 
 ## **5\. API Endpoint Contract**
 
-The REST contract below remains explicitly decoupled and is exposed via ASP.NET Core Minimal APIs. The Blazor Interactive Server UI may invoke the underlying services directly for lowest latency, while these endpoints serve any external or future clients.  
+The REST contract below is exposed via ASP.NET Core Minimal APIs and is the data path for the Blazor WebAssembly UI (over `HttpClient` with the auth cookie), as well as any external/future clients. Endpoints derive the current user from the cookie via `ICurrentUser`; the client never passes a user id. (Auth helper: `GET /api/auth/me` returns the signed-in user so the SPA can establish its auth state.)  
 GET  /api/exercises/pool  
 Returns: Collection of active configured exercises for the logged-in user's quick-log grid.
 

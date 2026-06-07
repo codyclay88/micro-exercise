@@ -3,6 +3,7 @@
 @code {
     protected override void OnInitialized()
     {
+        // Full-page load so the server-rendered /login page handles the cookie sign-in.
         var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
         Nav.NavigateTo($"login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
     }

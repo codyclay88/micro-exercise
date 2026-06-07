@@ -1,5 +1,7 @@
 using MicroExercise.Core.Abstractions;
 using MicroExercise.Core.Dtos;
+using MicroExercise.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace MicroExercise.Web.Endpoints;
 
@@ -11,7 +13,22 @@ public static class ApiEndpoints
 {
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder app)
     {
-        var api = app.MapGroup("/api").RequireAuthorization();
+        // Antiforgery is disabled on the API: it's a same-origin JSON API consumed by the WASM
+        // client over cookie auth (HttpOnly, SameSite=Lax). The login/register SSR forms keep
+        // antiforgery. (CSRF posture: SameSite + JSON content-type.)
+        var api = app.MapGroup("/api").RequireAuthorization().DisableAntiforgery();
+
+        // GET /api/auth/me — the current user's identity, so the WASM client can build its
+        // ClaimsPrincipal (the auth cookie is HttpOnly and unreadable from JS). 401 if signed out.
+        api.MapGet("/auth/me", async (
+            ICurrentUser user, UserManager<ApplicationUser> users, CancellationToken ct) =>
+        {
+            var appUser = await users.FindByIdAsync(user.UserId.ToString());
+            return appUser is null
+                ? Results.Unauthorized()
+                : Results.Ok(new CurrentUserDto(
+                    appUser.Id, appUser.DisplayName ?? appUser.UserName ?? "", appUser.Email));
+        });
 
         // GET /api/exercises/pool — active quick-log grid for the current user.
         api.MapGet("/exercises/pool", async (

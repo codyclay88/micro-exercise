@@ -32,6 +32,9 @@ secrets.json
 caddy_data/
 caddy_config/
 
+# Claude Code local tooling (scheduled-task locks, etc.)
+.claude/
+
 # OS cruft
 Thumbs.db
 .DS_Store
