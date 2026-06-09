@@ -32,6 +32,10 @@ secrets.json
 caddy_data/
 caddy_config/
 
+# Persistent data dir (Postgres data, DP keys) + database dumps
+/data/
+*.sql.gz
+
 # Claude Code local tooling (scheduled-task locks, etc.)
 .claude/
 

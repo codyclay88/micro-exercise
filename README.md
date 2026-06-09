@@ -142,7 +142,10 @@ docker compose up -d --build  # builds the app, starts db + app + caddy
 ```
 
 Point a DNS `A` record at the Droplet's IP and set it as `APP_DOMAIN`; Caddy issues the TLS
-certificate automatically. PostgreSQL data, Data Protection keys (so logins survive
-redeploys), and Caddy's certificates persist in named Docker volumes. A 1 GB Droplet is the
-practical minimum — add a 1–2 GB swapfile, since the in-place image build plus Postgres is
-tight at 1 GB.
+certificate automatically. Persistent state (PostgreSQL data + Data Protection keys) lives under
+`DATA_DIR` — point it at an attached **DigitalOcean Block Storage volume** so the data survives a
+Droplet rebuild. The database is backed up nightly via `scripts/backup.sh` (rotated locally +
+optional off-site upload to DO Spaces); `scripts/restore.sh` restores a dump.
+
+**See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)** for the full walkthrough — Droplet + swap,
+block storage volume, deploy, backup cron, and restore.

@@ -4,7 +4,12 @@
 #   docker compose up -d --build
 #
 # Caddy obtains/renews a Let's Encrypt certificate for APP_DOMAIN automatically and proxies
-# HTTPS traffic to the app over the internal network. Data survives restarts via named volumes.
+# HTTPS traffic to the app over the internal network.
+#
+# Persistent state (Postgres data + Data Protection keys) lives under ${DATA_DIR}. On the
+# Droplet, point DATA_DIR at a mounted DigitalOcean Block Storage volume (e.g.
+# /mnt/microburst_data) so the data survives a Droplet rebuild and can be re-attached to a new
+# Droplet. Defaults to ./data (the Droplet's local disk) when DATA_DIR is unset.
 services:
   db:
     image: postgres:17
@@ -14,7 +19,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -32,8 +37,9 @@ services:
       # Connection string for the app (Host=db is the Postgres service on the Compose network).
       ConnectionStrings__AppDb: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
     volumes:
-      # Persist Data Protection keys so auth cookies/antiforgery survive redeploys.
-      - dpkeys:/keys
+      # Persist Data Protection keys so auth cookies/antiforgery survive redeploys (and, on
+      # block storage, a Droplet rebuild).
+      - ${DATA_DIR:-./data}/dpkeys:/keys
 
   caddy:
     image: caddy:2
@@ -50,8 +56,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+# Postgres data + DP keys are bind-mounted under ${DATA_DIR} (see above). Caddy's cert/state
+# stay in named volumes — Let's Encrypt re-issues automatically on a fresh Droplet.
 volumes:
-  pgdata:
-  dpkeys:
   caddy_data:
   caddy_config:
