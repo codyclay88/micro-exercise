@@ -18,6 +18,27 @@ Cost: ~$6/mo Droplet + ~$1/mo for a 10 GB volume + a few cents for Spaces.
 
 ---
 
+## 0. Provision with doctl (one command)
+
+`scripts/provision.sh` creates the Droplet (Docker preinstalled), a firewall (22/80/443), and
+the Block Storage volume (ext4, attached) — idempotently — and prints the Droplet's public IP.
+
+```bash
+# Install doctl (once):  https://docs.digitalocean.com/reference/doctl/how-to/install/
+#   macOS:  brew install doctl
+#   Windows (Scoop): scoop install doctl     # or: choco install doctl
+#   Linux:  snap install doctl
+doctl auth init                 # paste a DO Personal Access Token (API > Tokens)
+bash scripts/provision.sh       # NAME/REGION/SIZE/VOLUME_SIZE/SSH_KEY overridable via env
+```
+
+It picks your SSH key automatically if you have exactly one (else it lists them and asks for
+`SSH_KEY=<id>`). Then do the DNS record (step 1) with the printed IP, SSH in, and run the
+on-Droplet steps (4–5). Steps 2–3 below describe the same Droplet/volume creation **manually via
+the console** if you'd rather not use doctl.
+
+---
+
 ## 1. DNS (Hostinger)
 
 `exercise.codyclay.com`'s DNS is hosted at Hostinger. Add an **A record**: host `exercise`
