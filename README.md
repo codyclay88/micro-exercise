@@ -130,9 +130,15 @@ production.
 
 ## Deployment
 
-Production runs on a single DigitalOcean Droplet via Docker Compose: the app, PostgreSQL, and
-a [Caddy](https://caddyserver.com/) reverse proxy (automatic Let's Encrypt HTTPS) all on one
-box (~$6/mo). See `compose.yaml`, `Dockerfile`, and `Caddyfile`.
+The app is a stateless container + PostgreSQL, so it runs on any container host. Two documented
+options (the same `Dockerfile` powers both):
+
+- **Railway (managed, low-ops)** — builds the `Dockerfile`, managed Postgres, auto TLS, deploy on
+  push. See [`docs/DEPLOYMENT-railway.md`](docs/DEPLOYMENT-railway.md).
+- **DigitalOcean Droplet (self-hosted)** — Docker Compose + Caddy + self-managed Postgres on one
+  ~$6/mo box. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+The DigitalOcean path (below) uses `compose.yaml`, `Dockerfile`, and `Caddyfile`.
 
 ```bash
 # On the Droplet (Docker + Compose installed):

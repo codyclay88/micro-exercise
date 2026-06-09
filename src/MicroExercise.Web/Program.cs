@@ -13,6 +13,13 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Managed container hosts (Railway, Render, Fly, …) inject the port to listen on via $PORT.
+// Honor it when present; otherwise fall back to ASPNETCORE_HTTP_PORTS (8080 in the Dockerfile)
+// for local runs and the DigitalOcean Compose stack.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // Razor Components are static-SSR only now (login/register/error). The app UI is a separate
 // Blazor WebAssembly SPA (MicroExercise.Client) served as static files — no SignalR circuit.
 builder.Services.AddRazorComponents();
@@ -141,6 +148,10 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>();   // static SSR: login / register / error
 app.MapApiEndpoints();
+
+// Liveness probe for the host's health checks (Railway healthcheckPath, etc.). Anonymous,
+// no DB — just confirms the process is serving.
+app.MapGet("/healthz", () => Results.Ok("ok"));
 
 // Sign out (posted from the nav). The matching login/register live in Components/Account.
 // Antiforgery disabled so the WASM client's plain form POST works (logout just clears the cookie).
