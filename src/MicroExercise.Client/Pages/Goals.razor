@@ -1,0 +1,219 @@
+@page "/goals"
+@attribute [Authorize]
+@using System.Globalization
+@inject GoalApi GoalApi
+@inject PoolApi PoolApi
+
+<PageTitle>Micro-Burst · Goals</PageTitle>
+
+<h1 class="h4 mb-3">Goals</h1>
+
+@if (_pool is null || _goals is null)
+{
+    <p class="text-secondary">Loading…</p>
+}
+else
+{
+    <!-- Set a one-shot, deadline-bound goal against one of your pool exercises. -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-3">Set a goal</h2>
+            @if (_pool.Count == 0)
+            {
+                <p class="text-secondary mb-0">Add an exercise to your <a href="/pool">pool</a> first, then set a goal against it.</p>
+            }
+            else
+            {
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small mb-0">Exercise</label>
+                        <select class="form-select form-select-sm" @bind="_poolId">
+                            @foreach (var p in _pool)
+                            {
+                                <option value="@p.Id">@p.DisplayName (@Unit(p.TrackingType))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-0">Target</label>
+                        <input type="number" min="1" class="form-control form-control-sm" @bind="_target" />
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-0">Start</label>
+                        <input type="date" class="form-control form-control-sm" @bind="_start" />
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-0">Deadline</label>
+                        <input type="date" class="form-control form-control-sm" @bind="_deadline" />
+                    </div>
+                    <div class="col-6 col-md-2 d-grid">
+                        <button class="btn btn-sm btn-primary" @onclick="CreateAsync"
+                                disabled="@(_busy || _target <= 0 || _deadline < _start || _poolId <= 0)">Add goal</button>
+                    </div>
+                </div>
+                @if (_deadline < _start)
+                {
+                    <div class="text-danger small mt-1">Deadline must be on or after the start date.</div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (_goals.Count == 0)
+    {
+        <p class="text-secondary py-3">No goals yet. Set one above to start tracking.</p>
+    }
+    else
+    {
+        var active = _goals.Where(g => g.Status == GoalStatus.Active).ToList();
+        var done = _goals.Where(g => g.Status != GoalStatus.Active).ToList();
+
+        @if (active.Count > 0)
+        {
+            <div class="vstack gap-2 mb-4">
+                @foreach (var g in active)
+                {
+                    @GoalCard(g)
+                }
+            </div>
+        }
+        @if (done.Count > 0)
+        {
+            <h2 class="h6 text-secondary">History</h2>
+            <div class="vstack gap-2">
+                @foreach (var g in done)
+                {
+                    @GoalCard(g)
+                }
+            </div>
+        }
+    }
+}
+
+@code {
+    private IReadOnlyList<PoolItemDto>? _pool;
+    private IReadOnlyList<GoalDto>? _goals;
+    private bool _busy;
+    private int? _confirmDeleteId;
+
+    // Create form
+    private int _poolId;
+    private int _target = 50;
+    private DateOnly _start = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly _deadline = DateOnly.FromDateTime(DateTime.Today).AddDays(3);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _pool = await PoolApi.GetActivePoolAsync();
+        _poolId = _pool.FirstOrDefault()?.Id ?? 0;
+        await LoadGoalsAsync();
+    }
+
+    private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
+
+    private async Task LoadGoalsAsync()
+    {
+        _confirmDeleteId = null;
+        var goals = await GoalApi.GetGoalsAsync(includeCompleted: true);
+        // Active first (soonest deadline first); completed/expired after (most recent first).
+        _goals = goals
+            .OrderBy(g => g.Status == GoalStatus.Active ? 0 : 1)
+            .ThenBy(g => g.Status == GoalStatus.Active ? g.Deadline : DateTimeOffset.MaxValue)
+            .ThenByDescending(g => g.Deadline)
+            .ToList();
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_target <= 0 || _deadline < _start || _poolId <= 0)
+            return;
+
+        _busy = true;
+        try
+        {
+            var start = new DateTimeOffset(_start.ToDateTime(TimeOnly.MinValue));
+            var deadline = new DateTimeOffset(_deadline.ToDateTime(TimeOnly.MaxValue));
+            await GoalApi.CreateGoalAsync(new CreateGoalRequest(_poolId, _target, deadline, start));
+            _target = 50;
+            await LoadGoalsAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        try
+        {
+            await GoalApi.DeleteGoalAsync(id);
+            await LoadGoalsAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string StatusBadgeClass(GoalStatus s) => s switch
+    {
+        GoalStatus.Achieved => "text-bg-success",
+        GoalStatus.Expired => "text-bg-secondary",
+        _ => "text-bg-primary"
+    };
+
+    private static string ProgressBarClass(GoalStatus s) => s switch
+    {
+        GoalStatus.Achieved => "bg-success",
+        GoalStatus.Expired => "bg-secondary",
+        _ => string.Empty
+    };
+
+    private static string DeadlineText(GoalDto g)
+    {
+        if (g.Status != GoalStatus.Active)
+            return $"by {g.Deadline.LocalDateTime:MMM d}";
+
+        var days = (g.Deadline.LocalDateTime.Date - DateTime.Today).Days;
+        return days switch
+        {
+            < 0 => "overdue",
+            0 => "due today",
+            1 => "1 day left",
+            _ => $"{days} days left"
+        };
+    }
+
+    private RenderFragment<GoalDto> GoalCard => g =>
+    @<div class="card">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center mb-1">
+                <div class="flex-grow-1">
+                    <span class="fw-medium">@g.ExerciseName</span>
+                    <span class="text-secondary small ms-1">@g.CurrentProgress / @g.TargetQuantity @Unit(g.TrackingType)</span>
+                </div>
+                <span class="badge @StatusBadgeClass(g.Status) me-2">@g.Status</span>
+                @if (_confirmDeleteId == g.Id)
+                {
+                    <button class="btn btn-sm btn-danger py-0" @onclick="() => DeleteAsync(g.Id)" disabled="@_busy">Delete</button>
+                    <button class="btn btn-sm btn-link py-0" @onclick="() => _confirmDeleteId = null" disabled="@_busy">Cancel</button>
+                }
+                else
+                {
+                    <button class="btn btn-sm btn-outline-secondary border-0 py-0" title="Delete goal"
+                            @onclick="() => _confirmDeleteId = g.Id">✕</button>
+                }
+            </div>
+            <div class="progress" role="progressbar" aria-valuenow="@((int)g.PercentComplete)" aria-valuemin="0" aria-valuemax="100" style="height: 6px;">
+                <div class="progress-bar @ProgressBarClass(g.Status)"
+                     style="width: @g.PercentComplete.ToString(CultureInfo.InvariantCulture)%"></div>
+            </div>
+            <div class="d-flex justify-content-between small text-secondary mt-1">
+                <span>@g.PercentComplete.ToString("0.#")%@(g.Status == GoalStatus.Active ? $" · {g.RemainingQuantity} {Unit(g.TrackingType)} to go" : "")</span>
+                <span>@DeadlineText(g)</span>
+            </div>
+        </div>
+    </div>;
+}

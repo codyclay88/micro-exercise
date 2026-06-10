@@ -37,6 +37,22 @@
     }
 }
 
+/* List-view inline keycap — rendered in flow (not absolutely positioned) so it doesn't
+   overlap the exercise name in the compact row. Hidden on touch like its grid counterpart. */
+.quick-log-card .key-hint-inline {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    color: var(--bs-secondary-color);
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+@media (hover: none) {
+    .quick-log-card .key-hint-inline {
+        display: none;
+    }
+}
+
 /* Brief glow confirming a burst was logged — feedback for mouse-free hotkey use.
    Two identical classes are alternated so consecutive logs replay the animation. */
 .quick-log-card.logged-pulse-a,

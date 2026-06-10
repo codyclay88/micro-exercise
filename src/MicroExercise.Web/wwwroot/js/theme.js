@@ -13,3 +13,15 @@ window.microburstTheme = {
         return next;
     }
 };
+
+// Small localStorage-backed store for lightweight client UI preferences (e.g. the
+// log-screen view mode). Keys are namespaced; failures (private mode, quota) are ignored.
+window.microburstPrefs = {
+    get(key, fallback) {
+        try { return localStorage.getItem('microburst-' + key) ?? fallback; }
+        catch { return fallback; }
+    },
+    set(key, value) {
+        try { localStorage.setItem('microburst-' + key, value); } catch { /* ignore */ }
+    }
+};

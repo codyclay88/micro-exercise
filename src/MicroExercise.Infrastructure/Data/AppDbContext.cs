@@ -18,6 +18,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ExerciseType> ExerciseTypes => Set<ExerciseType>();
     public DbSet<ExercisePool> ExercisePool => Set<ExercisePool>();
     public DbSet<WorkoutLog> WorkoutLogs => Set<WorkoutLog>();
+    public DbSet<Goal> Goals => Set<Goal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
