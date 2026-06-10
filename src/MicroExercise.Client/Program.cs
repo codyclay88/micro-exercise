@@ -23,5 +23,6 @@ builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthStateProvider>
 builder.Services.AddScoped<PoolApi>();
 builder.Services.AddScoped<LogApi>();
 builder.Services.AddScoped<ReportApi>();
+builder.Services.AddScoped<GoalApi>();
 
 await builder.Build().RunAsync();

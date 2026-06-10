@@ -123,6 +123,19 @@ Returns: HTTP 204 No Content, or 404 if not found / not owned by the user.
 GET  /api/reports/summary?from=YYYY-MM-DD\&to=YYYY-MM-DD  
 Returns: Array of aggregated objects tracking total volume and count per pool item.
 
+GET  /api/goals?includeCompleted=true|false  
+Returns: The user's goals with live, computed progress (current/target/percent/remaining) and status (Active|Achieved|Expired), newest first. `includeCompleted=false` returns only Active goals.
+
+GET  /api/goals/{id}  
+Returns: A single goal with progress, or 404 if not found / not owned by the user.
+
+POST /api/goals  
+Body: { "exercisePoolId": int, "targetQuantity": int, "deadline": DateTimeOffset, "startDate": DateTimeOffset|null }  
+Returns: HTTP 201 with the created goal (startDate defaults to "now" when null), 400 on invalid target/deadline, or 404 if the pool item isn't owned/active.
+
+DELETE /api/goals/{id}  
+Returns: HTTP 204 No Content (hard delete; burst history is unaffected), or 404 if not found / not owned.
+
 ### **5.1 Backend LINQ Aggregation Pattern**
 
 Below is the declarative LINQ syntax pattern executed by the repository layer to calculate historical summary reports:  

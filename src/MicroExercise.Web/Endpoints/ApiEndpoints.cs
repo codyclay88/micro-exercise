@@ -170,6 +170,48 @@ public static class ApiEndpoints
             return deleted ? Results.NoContent() : Results.NotFound();
         });
 
+        // GET /api/goals?includeCompleted=true|false — the user's goals with live progress.
+        api.MapGet("/goals", async (
+            IGoalService goals, ICurrentUser user, bool? includeCompleted, CancellationToken ct) =>
+        {
+            var result = await goals.GetGoalsAsync(user.UserId, includeCompleted ?? true, ct);
+            return Results.Ok(result);
+        });
+
+        // GET /api/goals/{id} — a single goal with progress.
+        api.MapGet("/goals/{id:int}", async (
+            int id, IGoalService goals, ICurrentUser user, CancellationToken ct) =>
+        {
+            var goal = await goals.GetGoalAsync(user.UserId, id, ct);
+            return goal is null ? Results.NotFound() : Results.Ok(goal);
+        });
+
+        // POST /api/goals — set a one-shot deadline goal against an owned, active pool item.
+        api.MapPost("/goals", async (
+            CreateGoalRequest request, IGoalService goals, ICurrentUser user, CancellationToken ct) =>
+        {
+            var errors = new Dictionary<string, string[]>();
+            if (request.TargetQuantity <= 0)
+                errors["targetQuantity"] = ["Target quantity must be greater than zero."];
+            if (request.Deadline <= (request.StartDate ?? DateTimeOffset.Now))
+                errors["deadline"] = ["Deadline must be after the start date."];
+            if (errors.Count > 0)
+                return Results.ValidationProblem(errors);
+
+            var created = await goals.CreateGoalAsync(user.UserId, request, ct);
+            return created is null
+                ? Results.NotFound() // pool item not found / not owned / inactive
+                : Results.Created($"/api/goals/{created.Id}", created);
+        });
+
+        // DELETE /api/goals/{id} — remove a goal (hard delete; burst history is unaffected).
+        api.MapDelete("/goals/{id:int}", async (
+            int id, IGoalService goals, ICurrentUser user, CancellationToken ct) =>
+        {
+            var deleted = await goals.DeleteGoalAsync(user.UserId, id, ct);
+            return deleted ? Results.NoContent() : Results.NotFound();
+        });
+
         // GET /api/reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD — aggregated volume per item.
         api.MapGet("/reports/summary", async (
             DateOnly from, DateOnly to, IReportService reports, ICurrentUser user, CancellationToken ct) =>
