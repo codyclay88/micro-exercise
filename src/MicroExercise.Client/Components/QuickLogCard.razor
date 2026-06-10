@@ -1,40 +1,75 @@
 @using MicroExercise.Core.Dtos
 @using MicroExercise.Core.Enums
 
-<div class="card h-100 shadow-sm quick-log-card @PulseClass">
-    @if (KeyHint is not null)
-    {
-        <kbd class="key-hint" aria-hidden="true">@KeyHint</kbd>
-    }
-    <div class="card-body d-flex flex-column">
-        <div class="d-flex justify-content-between align-items-baseline mb-2">
-            <h2 class="h6 mb-0 text-truncate @(KeyHint is not null ? "ps-4" : "")" title="@Item.DisplayName">@Item.DisplayName</h2>
-            <small class="text-secondary text-nowrap ms-2">@TodayBursts today</small>
-        </div>
-
-        <!-- Primary action: one tap logs the pending amount. -->
-        <button type="button"
-                class="btn btn-primary flex-grow-1 py-4 mb-3 log-button user-select-none"
-                @onclick="LogAsync" disabled="@_busy">
-            <div class="fs-2 fw-bold lh-1">@_pending</div>
-            <div class="small text-uppercase opacity-75">@UnitLabel</div>
-        </button>
-
-        <!-- Inline micro-adjustment, no modal. -->
-        <div class="d-flex align-items-center justify-content-between">
-            <button type="button" class="btn btn-outline-secondary stepper user-select-none"
-                    @onclick="Decrement" disabled="@(_busy || _pending <= Step)" aria-label="Decrease">−</button>
-            <small class="text-secondary">@TodayVolume @UnitLabel total today</small>
-            <button type="button" class="btn btn-outline-secondary stepper user-select-none"
-                    @onclick="Increment" disabled="@_busy" aria-label="Increase">+</button>
+@if (Compact)
+{
+    <!-- List view: one tight horizontal row, optimized for vertical stacking. -->
+    <div class="card shadow-sm quick-log-card quick-log-row @PulseClass">
+        <div class="card-body d-flex align-items-center py-2">
+            <div class="flex-grow-1 me-3 overflow-hidden">
+                <div class="d-flex align-items-center">
+                    @if (KeyHint is not null)
+                    {
+                        <kbd class="key-hint-inline me-2" aria-hidden="true">@KeyHint</kbd>
+                    }
+                    <span class="fw-medium text-truncate" title="@Item.DisplayName">@Item.DisplayName</span>
+                </div>
+                <small class="text-secondary">@TodayBursts today · @TodayVolume @UnitLabel total</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary stepper user-select-none"
+                        @onclick="Decrement" disabled="@(_busy || _pending <= Step)" aria-label="Decrease">−</button>
+                <button type="button" class="btn btn-primary log-button user-select-none px-3" style="min-width: 5.5rem;"
+                        @onclick="LogAsync" disabled="@_busy">
+                    <span class="fs-5 fw-bold">@_pending</span>
+                    <span class="small text-uppercase opacity-75 ms-1">@UnitLabel</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary stepper user-select-none"
+                        @onclick="Increment" disabled="@_busy" aria-label="Increase">+</button>
+            </div>
         </div>
     </div>
-</div>
+}
+else
+{
+    <div class="card h-100 shadow-sm quick-log-card @PulseClass">
+        @if (KeyHint is not null)
+        {
+            <kbd class="key-hint" aria-hidden="true">@KeyHint</kbd>
+        }
+        <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                <h2 class="h6 mb-0 text-truncate @(KeyHint is not null ? "ps-4" : "")" title="@Item.DisplayName">@Item.DisplayName</h2>
+                <small class="text-secondary text-nowrap ms-2">@TodayBursts today</small>
+            </div>
+
+            <!-- Primary action: one tap logs the pending amount. -->
+            <button type="button"
+                    class="btn btn-primary flex-grow-1 py-4 mb-3 log-button user-select-none"
+                    @onclick="LogAsync" disabled="@_busy">
+                <div class="fs-2 fw-bold lh-1">@_pending</div>
+                <div class="small text-uppercase opacity-75">@UnitLabel</div>
+            </button>
+
+            <!-- Inline micro-adjustment, no modal. -->
+            <div class="d-flex align-items-center justify-content-between">
+                <button type="button" class="btn btn-outline-secondary stepper user-select-none"
+                        @onclick="Decrement" disabled="@(_busy || _pending <= Step)" aria-label="Decrease">−</button>
+                <small class="text-secondary">@TodayVolume @UnitLabel total today</small>
+                <button type="button" class="btn btn-outline-secondary stepper user-select-none"
+                        @onclick="Increment" disabled="@_busy" aria-label="Increase">+</button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public PoolItemDto Item { get; set; } = default!;
     [Parameter] public int TodayBursts { get; set; }
     [Parameter] public long TodayVolume { get; set; }
+
+    /// <summary>Render as a compact list row (vertical-stacking) instead of a grid card.</summary>
+    [Parameter] public bool Compact { get; set; }
 
     /// <summary>1-9 keyboard hotkey shown as a keycap hint, or null for cards beyond the ninth.</summary>
     [Parameter] public int? KeyHint { get; set; }

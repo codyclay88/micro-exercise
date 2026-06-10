@@ -1,20 +1,64 @@
 @page "/"
 @attribute [Authorize]
 @implements IAsyncDisposable
+@using System.Globalization
 @inject PoolApi PoolApi
 @inject LogApi LogApi
 @inject ReportApi ReportApi
+@inject GoalApi GoalApi
 @inject IJSRuntime JS
 
 <PageTitle>Micro-Burst · Log</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Today</h1>
-    @if (_pool is not null)
-    {
-        <span class="text-secondary small">@_totalBurstsToday bursts logged today</span>
-    }
+    <div class="d-flex align-items-center gap-3">
+        @if (_pool is not null)
+        {
+            <span class="text-secondary small">@_totalBurstsToday bursts logged today</span>
+        }
+        @if (_pool is { Count: > 0 })
+        {
+            <div class="btn-group btn-group-sm" role="group" aria-label="Dashboard view">
+                <button type="button" class="btn @(_view == "grid" ? "btn-secondary" : "btn-outline-secondary")"
+                        @onclick='() => SetViewAsync("grid")' title="Grid view" aria-pressed="@(_view == "grid")">▦</button>
+                <button type="button" class="btn @(_view == "list" ? "btn-secondary" : "btn-outline-secondary")"
+                        @onclick='() => SetViewAsync("list")' title="List view" aria-pressed="@(_view == "list")">☰</button>
+            </div>
+        }
+    </div>
 </div>
+
+@* Active goals: progress bars advance the instant a burst is logged (optimistic local update). *@
+@if (_goals is { Count: > 0 })
+{
+    <section class="mb-4">
+        <h2 class="h6 text-secondary mb-2">Active goals</h2>
+        <div class="vstack gap-2">
+            @foreach (var g in _goals)
+            {
+                <div>
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>
+                            <span class="fw-medium">@g.ExerciseName</span>
+                            <span class="text-secondary ms-1">@g.CurrentProgress / @g.TargetQuantity @Unit(g.TrackingType)</span>
+                            @if (g.Status == GoalStatus.Achieved)
+                            {
+                                <span class="badge text-bg-success ms-1">Achieved</span>
+                            }
+                        </span>
+                        <span class="text-secondary">@GoalDeadlineText(g)</span>
+                    </div>
+                    <div class="progress" role="progressbar" aria-valuenow="@((int)g.PercentComplete)"
+                         aria-valuemin="0" aria-valuemax="100" style="height: 6px;">
+                        <div class="progress-bar @(g.Status == GoalStatus.Achieved ? "bg-success" : "")"
+                             style="width: @g.PercentComplete.ToString(CultureInfo.InvariantCulture)%"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
 
 @if (_pool is null)
 {
@@ -29,21 +73,41 @@ else if (_pool.Count == 0)
 }
 else
 {
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-        @for (var i = 0; i < _pool.Count; i++)
-        {
-            var item = _pool[i];
-            var stats = _today.GetValueOrDefault(item.Id);
-            int? keyHint = i < 9 ? i + 1 : null;
-            <div class="col">
+    @if (_view == "list")
+    {
+        <div class="vstack gap-2">
+            @for (var i = 0; i < _pool.Count; i++)
+            {
+                var item = _pool[i];
+                var stats = _today.GetValueOrDefault(item.Id);
+                int? keyHint = i < 9 ? i + 1 : null;
                 <QuickLogCard Item="item"
                               TodayBursts="stats.Bursts"
                               TodayVolume="stats.Volume"
                               KeyHint="keyHint"
+                              Compact="true"
                               OnLog="qty => LogAsync(item, qty)" />
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+            @for (var i = 0; i < _pool.Count; i++)
+            {
+                var item = _pool[i];
+                var stats = _today.GetValueOrDefault(item.Id);
+                int? keyHint = i < 9 ? i + 1 : null;
+                <div class="col">
+                    <QuickLogCard Item="item"
+                                  TodayBursts="stats.Bursts"
+                                  TodayVolume="stats.Volume"
+                                  KeyHint="keyHint"
+                                  OnLog="qty => LogAsync(item, qty)" />
+                </div>
+            }
+        </div>
+    }
     <p class="text-secondary small mt-3 mb-0 d-none d-md-block">
         Tip: press <kbd>1</kbd>–<kbd>9</kbd> to log a card without the mouse.
     </p>
@@ -53,10 +117,23 @@ else
     private IReadOnlyList<PoolItemDto>? _pool;
     private readonly Dictionary<int, (int Bursts, long Volume)> _today = new();
     private int _totalBurstsToday;
+    private List<GoalDto>? _goals;
+    private string _view = "grid";   // "grid" | "list"; restored from localStorage
     private DotNetObjectReference<Dashboard>? _selfRef;
 
     protected override async Task OnInitializedAsync()
     {
+        // Restore the saved view before the first render to avoid a grid→list flash.
+        // Best-effort: a missing/blocked prefs helper must never crash the Log page.
+        try
+        {
+            _view = await JS.InvokeAsync<string>("microburstPrefs.get", "log-view", "grid");
+        }
+        catch (JSException)
+        {
+            _view = "grid";
+        }
+
         _pool = await PoolApi.GetActivePoolAsync();
 
         // Seed each card with what's already been logged today (whole-day summary).
@@ -66,6 +143,53 @@ else
             _today[row.ExercisePoolId] = ((int)row.TotalBursts, row.TotalVolume);
 
         _totalBurstsToday = summary.Sum(s => s.TotalBursts);
+
+        // Active goals get their progress bars on the log screen.
+        _goals = (await GoalApi.GetGoalsAsync(includeCompleted: false)).ToList();
+    }
+
+    private async Task SetViewAsync(string view)
+    {
+        if (_view == view)
+            return;
+        _view = view;
+        try
+        {
+            await JS.InvokeVoidAsync("microburstPrefs.set", "log-view", view);
+        }
+        catch (JSException)
+        {
+            // Persistence is best-effort; the in-memory toggle still works this session.
+        }
+    }
+
+    private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
+
+    private static string GoalDeadlineText(GoalDto g) =>
+        (g.Deadline.LocalDateTime.Date - DateTime.Today).Days switch
+        {
+            < 0 => "overdue",
+            0 => "due today",
+            1 => "1 day left",
+            var d => $"{d} days left"
+        };
+
+    // Recompute the derived fields client-side so the bar advances without a server round-trip
+    // (mirrors GoalService.ToDto; an active goal can only cross into Achieved here).
+    private static GoalDto WithProgress(GoalDto g, int progress)
+    {
+        var remaining = Math.Max(0, g.TargetQuantity - progress);
+        var percent = g.TargetQuantity <= 0
+            ? 0
+            : Math.Min(100, Math.Round(100.0 * progress / g.TargetQuantity, 1));
+        var status = progress >= g.TargetQuantity ? GoalStatus.Achieved : g.Status;
+        return g with
+        {
+            CurrentProgress = progress,
+            RemainingQuantity = remaining,
+            PercentComplete = percent,
+            Status = status
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -99,6 +223,18 @@ else
         var current = _today.GetValueOrDefault(item.Id);
         _today[item.Id] = (current.Bursts + 1, current.Volume + quantity);
         _totalBurstsToday++;
+
+        // Advance any active goal on this exercise whose window contains now.
+        if (_goals is not null)
+        {
+            var now = DateTimeOffset.Now;
+            for (var i = 0; i < _goals.Count; i++)
+            {
+                var g = _goals[i];
+                if (g.ExercisePoolId == item.Id && now >= g.StartDate && now <= g.Deadline)
+                    _goals[i] = WithProgress(g, g.CurrentProgress + quantity);
+            }
+        }
     }
 
     public async ValueTask DisposeAsync()
