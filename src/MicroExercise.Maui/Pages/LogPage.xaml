@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.LogPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:Name="Root"
+    x:DataType="vm:LogViewModel"
+    Title="Log">
+
+    <RefreshView IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
+        <CollectionView ItemsSource="{Binding Pool}">
+
+            <CollectionView.Header>
+                <VerticalStackLayout Padding="16,16,16,8" Spacing="16">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="Today" FontSize="26" FontAttributes="Bold" />
+                        <Label Text="{Binding TotalBurstsText}" FontSize="13" Opacity="0.6" />
+                    </VerticalStackLayout>
+
+                    <!-- Active goals: bars advance the instant a burst is logged. -->
+                    <VerticalStackLayout
+                        Spacing="10"
+                        IsVisible="{Binding HasGoals}"
+                        BindableLayout.ItemsSource="{Binding Goals}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GoalProgress">
+                                <VerticalStackLayout Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <HorizontalStackLayout Grid.Column="0" Spacing="6">
+                                            <Label Text="{Binding ExerciseName}" FontAttributes="Bold" FontSize="13" />
+                                            <Label Text="{Binding ProgressText}" FontSize="13" Opacity="0.6" />
+                                            <Label Text="✓ Achieved" FontSize="12" TextColor="#198754" IsVisible="{Binding IsAchieved}" />
+                                        </HorizontalStackLayout>
+                                        <Label Grid.Column="1" Text="{Binding DeadlineText}" FontSize="12" Opacity="0.6" />
+                                    </Grid>
+                                    <ProgressBar Progress="{Binding Percent}" />
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </CollectionView.Header>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:QuickLogItem">
+                    <Border
+                        Margin="16,4"
+                        Padding="12"
+                        Stroke="#22000000"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                <Label Text="{Binding DisplayName}" FontSize="16" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding TodaySummary}" FontSize="12" Opacity="0.6" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Button
+                                    Text="−"
+                                    WidthRequest="44"
+                                    Command="{Binding DecrementCommand}"
+                                    IsEnabled="{Binding CanDecrement}" />
+                                <Button
+                                    Text="{Binding PendingLabel}"
+                                    MinimumWidthRequest="96"
+                                    Command="{Binding Source={x:Reference Root}, Path=BindingContext.LogCommand}"
+                                    CommandParameter="{Binding .}" />
+                                <Button
+                                    Text="+"
+                                    WidthRequest="44"
+                                    Command="{Binding IncrementCommand}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24" Spacing="8" VerticalOptions="Center">
+                    <Label
+                        Text="No exercises in your pool yet."
+                        HorizontalOptions="Center"
+                        Opacity="0.6"
+                        IsVisible="{Binding IsEmpty}" />
+                    <Label
+                        Text="Add some on the Pool tab to start logging."
+                        HorizontalOptions="Center"
+                        FontSize="13"
+                        Opacity="0.6"
+                        IsVisible="{Binding IsEmpty}" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+
+        </CollectionView>
+    </RefreshView>
+</ContentPage>

@@ -1,8 +1,8 @@
 namespace MicroExercise.Maui.Pages;
 
 /// <summary>
-/// Temporary tab content for Phase 1. Each screen gets its real XAML + ViewModel in later phases
-/// (Log -> Phase 2, History/Reports -> Phase 3, Goals/Pool -> Phase 4).
+/// Temporary tab content. Each screen gets its real XAML + ViewModel in its phase
+/// (Log -> done, History/Reports -> Phase 3, Goals/Pool -> Phase 4).
 /// </summary>
 public abstract class PlaceholderPage : ContentPage
 {
@@ -23,7 +23,6 @@ public abstract class PlaceholderPage : ContentPage
     }
 }
 
-public sealed class LogPage() : PlaceholderPage("Log", "Coming in Phase 2");
 public sealed class HistoryPage() : PlaceholderPage("History", "Coming in Phase 3");
 public sealed class ReportsPage() : PlaceholderPage("Reports", "Coming in Phase 3");
 public sealed class GoalsPage() : PlaceholderPage("Goals", "Coming in Phase 4");
