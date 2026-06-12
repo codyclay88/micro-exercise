@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.HistoryPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:Name="Root"
+    x:DataType="vm:HistoryViewModel"
+    Title="History">
+
+    <Grid RowDefinitions="Auto,*">
+        <HorizontalStackLayout Grid.Row="0" Padding="16,12" Spacing="20">
+            <VerticalStackLayout Spacing="2">
+                <Label Text="From" FontSize="12" Opacity="0.6" />
+                <DatePicker Date="{Binding From}" Format="MMM d, yyyy" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="2">
+                <Label Text="To" FontSize="12" Opacity="0.6" />
+                <DatePicker Date="{Binding To}" Format="MMM d, yyyy" />
+            </VerticalStackLayout>
+        </HorizontalStackLayout>
+
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Bursts}">
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BurstRow">
+                        <Grid Padding="16,8" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                                <Label Text="{Binding ExerciseName}" FontAttributes="Bold" />
+                                <Label Text="{Binding WhenText}" FontSize="12" Opacity="0.6" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Label Text="{Binding AmountText}" VerticalOptions="Center" />
+                                <Button
+                                    Text="✎"
+                                    WidthRequest="44"
+                                    Command="{Binding Source={x:Reference Root}, Path=BindingContext.EditCommand}"
+                                    CommandParameter="{Binding .}" />
+                                <Button
+                                    Text="✕"
+                                    WidthRequest="44"
+                                    TextColor="#D9534F"
+                                    Command="{Binding Source={x:Reference Root}, Path=BindingContext.DeleteCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+                <CollectionView.Footer>
+                    <Label Text="{Binding CountText}" Padding="16,8" FontSize="12" Opacity="0.6" />
+                </CollectionView.Footer>
+
+                <CollectionView.EmptyView>
+                    <Label
+                        Text="No bursts recorded in this range."
+                        Padding="24"
+                        HorizontalOptions="Center"
+                        Opacity="0.6"
+                        IsVisible="{Binding IsEmpty}" />
+                </CollectionView.EmptyView>
+
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

@@ -57,7 +57,9 @@ public static class MauiProgram
         services.AddTransient<LoginPage>();
         services.AddSingleton<LogViewModel>();
         services.AddTransient<LogPage>();
+        services.AddSingleton<HistoryViewModel>();
         services.AddTransient<HistoryPage>();
+        services.AddSingleton<ReportsViewModel>();
         services.AddTransient<ReportsPage>();
         services.AddTransient<GoalsPage>();
         services.AddTransient<PoolPage>();
