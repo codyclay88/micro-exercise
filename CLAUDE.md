@@ -66,9 +66,9 @@ Maui (native) ┘
   native code — `AuthService` drives the static-SSR `/login` form (GET for the antiforgery
   token, then form-POST) over an `HttpClient` with a shared `CookieContainer`, persists the
   Identity cookie to `SecureStorage`, and gates the Shell on `GET /api/auth/me`. **No server
-  changes.** See `docs/MAUI-Mobile-App-Design.md`. Phases 1–3 are in (scaffold + auth; Log screen;
-  History + Reports — mirroring `Dashboard`/`History`/`Reports.razor`); Goals/Pool remain
-  placeholders pending Phase 4.
+  changes.** See `docs/MAUI-Mobile-App-Design.md`. All five feature screens are in (Phases 1–4:
+  scaffold + auth; Log; History + Reports; Goals + Pool — mirroring the web pages). Remaining:
+  Phase 5 polish (dark theme, icons, packaging) and the optional Phase 6 Health export.
 - **Web** (`src/MicroExercise.Web`) — Minimal API endpoints, the SPA host
   (`UseBlazorFrameworkFiles` + `MapFallbackToFile("index.html")`), static-SSR auth pages
   (`Components/Account`), DI, auth. Composition root; references Core, Infrastructure, **and

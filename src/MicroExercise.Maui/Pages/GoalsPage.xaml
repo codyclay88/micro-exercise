@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.GoalsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:Name="Root"
+    x:DataType="vm:GoalsViewModel"
+    Title="Goals">
+
+    <ContentPage.Resources>
+        <!-- Shared goal card; the delete command resolves up to the page's GoalsViewModel. -->
+        <DataTemplate x:Key="GoalCard" x:DataType="vm:GoalRow">
+            <Border Margin="0,4" Padding="12" Stroke="#22000000" StrokeThickness="1" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="{Binding ExerciseName}" FontAttributes="Bold" />
+                            <Label Text="{Binding ProgressText}" FontSize="13" Opacity="0.6" />
+                        </HorizontalStackLayout>
+                        <Border Grid.Column="1" Padding="6,1" BackgroundColor="{Binding StatusColor}" StrokeThickness="0" StrokeShape="RoundRectangle 4" VerticalOptions="Center">
+                            <Label Text="{Binding StatusText}" FontSize="11" TextColor="White" />
+                        </Border>
+                        <Button
+                            Grid.Column="2"
+                            Text="✕"
+                            WidthRequest="40"
+                            Padding="0"
+                            Command="{Binding BindingContext.DeleteCommand, Source={x:Reference Root}}"
+                            CommandParameter="{Binding .}" />
+                    </Grid>
+                    <ProgressBar Progress="{Binding Percent}" ProgressColor="{Binding StatusColor}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0" Text="{Binding DetailText}" FontSize="12" Opacity="0.6" />
+                        <Label Grid.Column="1" Text="{Binding DeadlineText}" FontSize="12" Opacity="0.6" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <!-- Create form -->
+            <Border Padding="12" Stroke="#22000000" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Set a goal" FontSize="16" FontAttributes="Bold" />
+
+                    <Label
+                        Text="Add an exercise to your pool first, then set a goal against it."
+                        Opacity="0.6"
+                        IsVisible="{Binding NoPool}" />
+
+                    <VerticalStackLayout Spacing="10" IsVisible="{Binding HasPool}">
+                        <Picker
+                            Title="Exercise"
+                            ItemsSource="{Binding PoolOptions}"
+                            ItemDisplayBinding="{Binding Label}"
+                            SelectedItem="{Binding SelectedPool}" />
+
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="Target" FontSize="12" Opacity="0.6" />
+                            <Entry Keyboard="Numeric" Text="{Binding Target}" />
+                        </VerticalStackLayout>
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                <Label Text="Start" FontSize="12" Opacity="0.6" />
+                                <DatePicker Date="{Binding Start}" Format="MMM d, yyyy" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="Deadline" FontSize="12" Opacity="0.6" />
+                                <DatePicker Date="{Binding Deadline}" Format="MMM d, yyyy" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <Label
+                            Text="Deadline must be on or after the start date."
+                            FontSize="12"
+                            TextColor="#D9534F"
+                            IsVisible="{Binding DeadlineInvalid}" />
+
+                        <Button Text="Add goal" Command="{Binding CreateCommand}" IsEnabled="{Binding CanCreate}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label
+                Text="No goals yet. Set one above to start tracking."
+                Opacity="0.6"
+                IsVisible="{Binding NoGoals}" />
+
+            <!-- Active goals -->
+            <VerticalStackLayout
+                BindableLayout.ItemsSource="{Binding ActiveGoals}"
+                BindableLayout.ItemTemplate="{StaticResource GoalCard}" />
+
+            <!-- Completed / expired -->
+            <Label Text="History" FontAttributes="Bold" Opacity="0.6" IsVisible="{Binding HasDone}" />
+            <VerticalStackLayout
+                BindableLayout.ItemsSource="{Binding DoneGoals}"
+                BindableLayout.ItemTemplate="{StaticResource GoalCard}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
