@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="MicroExercise.Maui.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:MicroExercise.Maui.Pages"
+    Title="Micro-Burst">
+
+    <TabBar>
+        <ShellContent Title="Log" Route="log" ContentTemplate="{DataTemplate pages:LogPage}" />
+        <ShellContent Title="History" Route="history" ContentTemplate="{DataTemplate pages:HistoryPage}" />
+        <ShellContent Title="Reports" Route="reports" ContentTemplate="{DataTemplate pages:ReportsPage}" />
+        <ShellContent Title="Goals" Route="goals" ContentTemplate="{DataTemplate pages:GoalsPage}" />
+        <ShellContent Title="Pool" Route="pool" ContentTemplate="{DataTemplate pages:PoolPage}" />
+    </TabBar>
+
+    <MenuItem Text="Sign out" Clicked="OnSignOut" />
+</Shell>

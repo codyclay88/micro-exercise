@@ -21,6 +21,11 @@ dotnet test  MicroExercise.slnx
 docker compose -f compose.dev.yaml up -d
 cd src/MicroExercise.Web && dotnet run     # http://localhost:5077  (https profile -> :7020)
 
+# MAUI mobile app (src/MicroExercise.Maui). On Windows the project builds the desktop target
+# only (iOS/MacCatalyst need a Mac; Android needs the SDK/JDK configured) — see its csproj.
+dotnet build src/MicroExercise.Maui/MicroExercise.Maui.csproj -f net10.0-windows10.0.19041.0
+# Real mobile builds (on a configured machine): dotnet workload install maui; -f net10.0-android / -ios.
+
 # Deploy the full production stack (app + Postgres + Caddy TLS) on a Droplet:
 cp .env.example .env && docker compose up -d --build
 
@@ -36,8 +41,10 @@ There is no `.sln` — use `MicroExercise.slnx`.
 ## Architecture & layering (do not violate)
 
 ```
-Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
-       \_______________________________________________/   (Client also -> Core, for DTOs)
+Client (WASM) ┐
+              ├─HTTP─►  Web  ->  Infrastructure  ->  Core
+Maui (native) ┘
+   (both clients -> ApiClient -> Core; ApiClient holds the typed REST clients + DTOs)
 ```
 
 - **Core** (`src/MicroExercise.Core`) — entities, enums, DTOs, service interfaces. **No
@@ -53,6 +60,14 @@ Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
   Dashboard/History/Pool/Reports + layout). Calls the REST API via the typed clients in
   `MicroExercise.ApiClient`; auth state via `CookieAuthStateProvider`.
   References **Core + ApiClient**. Runs in the browser — no server services here.
+- **Maui** (`src/MicroExercise.Maui`) — the native **.NET MAUI** mobile/desktop app (MVVM +
+  Shell). A *second* client of the same REST API, sharing **Core + ApiClient** verbatim; only
+  the views (XAML + ViewModels) are platform-specific. Reuses the server's cookie auth from
+  native code — `AuthService` drives the static-SSR `/login` form (GET for the antiforgery
+  token, then form-POST) over an `HttpClient` with a shared `CookieContainer`, persists the
+  Identity cookie to `SecureStorage`, and gates the Shell on `GET /api/auth/me`. **No server
+  changes.** See `docs/MAUI-Mobile-App-Design.md`. Phase 1 (scaffold + auth) is in; the five
+  feature screens are placeholders pending Phases 2–5.
 - **Web** (`src/MicroExercise.Web`) — Minimal API endpoints, the SPA host
   (`UseBlazorFrameworkFiles` + `MapFallbackToFile("index.html")`), static-SSR auth pages
   (`Components/Account`), DI, auth. Composition root; references Core, Infrastructure, **and
