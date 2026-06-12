@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using MicroExercise.Core.Dtos;
 
-namespace MicroExercise.Client.Services;
+namespace MicroExercise.ApiClient;
 
 /// <summary>Client for the exercise-pool endpoints under <c>/api/exercises</c>.</summary>
 public class PoolApi(HttpClient http)

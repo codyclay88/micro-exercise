@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MicroExercise.Client;
 using MicroExercise.Client.Authentication;
-using MicroExercise.Client.Services;
+using MicroExercise.ApiClient;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");

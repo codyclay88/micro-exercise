@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/MicroExercise.ApiClient/MicroExercise.ApiClient.csproj" />
     <Project Path="src/MicroExercise.Client/MicroExercise.Client.csproj" />
     <Project Path="src/MicroExercise.Core/MicroExercise.Core.csproj" />
     <Project Path="src/MicroExercise.Infrastructure/MicroExercise.Infrastructure.csproj" />

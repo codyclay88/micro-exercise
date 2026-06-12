@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using MicroExercise.Core.Dtos;
 
-namespace MicroExercise.Client.Services;
+namespace MicroExercise.ApiClient;
 
 /// <summary>Client for the reporting endpoint under <c>/api/reports</c>.</summary>
 public class ReportApi(HttpClient http)

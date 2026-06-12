@@ -45,10 +45,14 @@ Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
 - **Infrastructure** (`src/MicroExercise.Infrastructure`) — `AppDbContext`, EF
   configurations, migrations, seeding, and the service *implementations* of Core's
   interfaces. References Core only.
+- **ApiClient** (`src/MicroExercise.ApiClient`) — the typed REST clients
+  (`PoolApi`/`LogApi`/`ReportApi`/`GoalApi`) + `ApiJson` options. A plain library over
+  `HttpClient`, referencing **Core only** (shared DTOs). Shared by the WASM `Client` and the
+  future MAUI app so the data layer stays identical across front-ends (no view code here).
 - **Client** (`src/MicroExercise.Client`) — the Blazor **WebAssembly** SPA (all the app UI:
-  Dashboard/History/Pool/Reports + layout). Calls the REST API via typed clients in
-  `Client/Services` (`PoolApi`/`LogApi`/`ReportApi`); auth state via `CookieAuthStateProvider`.
-  References **Core only** (shared DTOs). Runs in the browser — no server services here.
+  Dashboard/History/Pool/Reports + layout). Calls the REST API via the typed clients in
+  `MicroExercise.ApiClient`; auth state via `CookieAuthStateProvider`.
+  References **Core + ApiClient**. Runs in the browser — no server services here.
 - **Web** (`src/MicroExercise.Web`) — Minimal API endpoints, the SPA host
   (`UseBlazorFrameworkFiles` + `MapFallbackToFile("index.html")`), static-SSR auth pages
   (`Components/Account`), DI, auth. Composition root; references Core, Infrastructure, **and

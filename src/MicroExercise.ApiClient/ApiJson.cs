@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MicroExercise.Client.Services;
+namespace MicroExercise.ApiClient;
 
 /// <summary>
 /// Shared JSON options for talking to the REST API. Web defaults (camelCase, case-insensitive)
