@@ -24,6 +24,9 @@
                 <Button Text="30d" WidthRequest="60" Command="{Binding SetRangeCommand}" CommandParameter="30" />
                 <Button Text="90d" WidthRequest="60" Command="{Binding SetRangeCommand}" CommandParameter="90" />
             </HorizontalStackLayout>
+            <Border IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="12,8">
+                <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+            </Border>
         </VerticalStackLayout>
 
         <RefreshView Grid.Row="1" IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">

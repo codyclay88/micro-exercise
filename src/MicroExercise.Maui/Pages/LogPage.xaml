@@ -13,6 +13,9 @@
 
             <CollectionView.Header>
                 <VerticalStackLayout Padding="16,16,16,8" Spacing="16">
+                    <Border IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="12,8">
+                        <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+                    </Border>
                     <VerticalStackLayout Spacing="2">
                         <Label Text="Today" FontSize="26" FontAttributes="Bold" />
                         <Label Text="{Binding TotalBurstsText}" FontSize="13" Opacity="0.6" />

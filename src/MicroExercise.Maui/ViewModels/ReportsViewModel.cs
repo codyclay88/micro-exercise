@@ -10,7 +10,7 @@ namespace MicroExercise.Maui.ViewModels;
 /// The Reports screen — a volume summary over a date range. Mirrors the web <c>Reports.razor</c>:
 /// default last 30 days, 7/30/90-day presets, rows ordered most-performed first.
 /// </summary>
-public partial class ReportsViewModel(ReportApi report) : ObservableObject
+public partial class ReportsViewModel(ReportApi report) : FeatureViewModel
 {
     private bool _ready;
 
@@ -41,6 +41,7 @@ public partial class ReportsViewModel(ReportApi report) : ObservableObject
     {
         if (IsLoading) return;
         IsLoading = true;
+        ErrorMessage = null;
         try
         {
             var from = DateOnly.FromDateTime(From);
@@ -68,6 +69,10 @@ public partial class ReportsViewModel(ReportApi report) : ObservableObject
                   $"{To.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)} · " +
                   $"{totalBursts} burst{(totalBursts == 1 ? "" : "s")} across " +
                   $"{Rows.Count} exercise{(Rows.Count == 1 ? "" : "s")}";
+        }
+        catch (Exception ex) when (IsConnectivityError(ex))
+        {
+            ErrorMessage = ConnectivityMessage;
         }
         finally
         {

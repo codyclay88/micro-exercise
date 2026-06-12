@@ -14,5 +14,6 @@
         <ShellContent Title="Pool" Route="pool" ContentTemplate="{DataTemplate pages:PoolPage}" />
     </TabBar>
 
+    <MenuItem x:Name="ThemeMenuItem" Clicked="OnToggleTheme" />
     <MenuItem Text="Sign out" Clicked="OnSignOut" />
 </Shell>

@@ -12,9 +12,13 @@
         <CollectionView ItemsSource="{Binding Items}">
 
             <CollectionView.Header>
-                <Border Margin="16,16,16,8" Padding="12" Stroke="#22000000" StrokeThickness="1" StrokeShape="RoundRectangle 12">
-                    <VerticalStackLayout Spacing="10">
-                        <Label Text="Add an exercise" FontSize="16" FontAttributes="Bold" />
+                <VerticalStackLayout>
+                    <Border Margin="16,16,16,0" Padding="12,8" IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8">
+                        <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+                    </Border>
+                    <Border Margin="16,16,16,8" Padding="12" Stroke="#22000000" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Add an exercise" FontSize="16" FontAttributes="Bold" />
 
                         <Picker
                             Title="Exercise"
@@ -45,9 +49,10 @@
                             <Entry Keyboard="Numeric" Text="{Binding AddTarget}" />
                         </VerticalStackLayout>
 
-                        <Button Text="Add" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" />
-                    </VerticalStackLayout>
-                </Border>
+                            <Button Text="Add" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
             </CollectionView.Header>
 
             <CollectionView.ItemTemplate>

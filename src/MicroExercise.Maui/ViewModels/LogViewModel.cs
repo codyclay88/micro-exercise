@@ -11,7 +11,7 @@ namespace MicroExercise.Maui.ViewModels;
 /// pool, seed each card with today's totals (the whole-day report summary), show active goals, and
 /// log bursts with an optimistic local update of totals + goal progress.
 /// </summary>
-public partial class LogViewModel(PoolApi pool, LogApi log, ReportApi report, GoalApi goal) : ObservableObject
+public partial class LogViewModel(PoolApi pool, LogApi log, ReportApi report, GoalApi goal) : FeatureViewModel
 {
     public ObservableCollection<QuickLogItem> Pool { get; } = [];
     public ObservableCollection<GoalProgress> Goals { get; } = [];
@@ -31,6 +31,7 @@ public partial class LogViewModel(PoolApi pool, LogApi log, ReportApi report, Go
     public async Task LoadAsync()
     {
         IsLoading = true;
+        ErrorMessage = null;
         try
         {
             var items = await pool.GetActivePoolAsync();
@@ -58,6 +59,10 @@ public partial class LogViewModel(PoolApi pool, LogApi log, ReportApi report, Go
             HasGoals = Goals.Count > 0;
             IsEmpty = Pool.Count == 0;
             IsLoaded = true;
+        }
+        catch (Exception ex) when (IsConnectivityError(ex))
+        {
+            ErrorMessage = ConnectivityMessage;
         }
         finally
         {

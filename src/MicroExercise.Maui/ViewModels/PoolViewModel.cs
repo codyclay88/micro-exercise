@@ -32,7 +32,7 @@ public sealed class PoolTypeOption
 /// catalog (or create a new custom exercise), reorder up/down, edit (modal), and remove (soft
 /// delete — history is preserved).
 /// </summary>
-public partial class PoolViewModel(PoolApi poolApi) : ObservableObject
+public partial class PoolViewModel(PoolApi poolApi) : FeatureViewModel
 {
     private Dictionary<int, string> _typeNames = new();
 
@@ -82,6 +82,7 @@ public partial class PoolViewModel(PoolApi poolApi) : ObservableObject
     {
         if (IsLoading) return;
         IsLoading = true;
+        ErrorMessage = null;
         try
         {
             var previousTypeId = SelectedType?.TypeId;
@@ -105,6 +106,10 @@ public partial class PoolViewModel(PoolApi poolApi) : ObservableObject
                 Items.Add(new PoolItemRow(item, typeName, isFirst: i == 0, isLast: i == pool.Count - 1));
             }
             IsEmpty = Items.Count == 0;
+        }
+        catch (Exception ex) when (IsConnectivityError(ex))
+        {
+            ErrorMessage = ConnectivityMessage;
         }
         finally
         {

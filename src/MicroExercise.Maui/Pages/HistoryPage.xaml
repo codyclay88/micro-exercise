@@ -8,7 +8,7 @@
     x:DataType="vm:HistoryViewModel"
     Title="History">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
         <HorizontalStackLayout Grid.Row="0" Padding="16,12" Spacing="20">
             <VerticalStackLayout Spacing="2">
                 <Label Text="From" FontSize="12" Opacity="0.6" />
@@ -20,7 +20,11 @@
             </VerticalStackLayout>
         </HorizontalStackLayout>
 
-        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
+        <Border Grid.Row="1" Margin="16,0,16,8" IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="12,8">
+            <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+        </Border>
+
+        <RefreshView Grid.Row="2" IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
             <CollectionView ItemsSource="{Binding Bursts}">
 
                 <CollectionView.ItemTemplate>

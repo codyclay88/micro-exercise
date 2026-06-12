@@ -11,7 +11,7 @@ namespace MicroExercise.Maui.ViewModels;
 /// <c>History.razor</c>: default last 7 days, reload whenever the range changes, and reload after a
 /// mutation so timestamp-driven ordering stays correct.
 /// </summary>
-public partial class HistoryViewModel(LogApi log) : ObservableObject
+public partial class HistoryViewModel(LogApi log) : FeatureViewModel
 {
     private bool _ready;
 
@@ -31,6 +31,7 @@ public partial class HistoryViewModel(LogApi log) : ObservableObject
     {
         if (IsLoading) return;
         IsLoading = true;
+        ErrorMessage = null;
         try
         {
             var from = DateOnly.FromDateTime(From);
@@ -49,6 +50,10 @@ public partial class HistoryViewModel(LogApi log) : ObservableObject
 
             IsEmpty = Bursts.Count == 0;
             CountText = IsEmpty ? "" : $"{Bursts.Count} burst{(Bursts.Count == 1 ? "" : "s")} shown.";
+        }
+        catch (Exception ex) when (IsConnectivityError(ex))
+        {
+            ErrorMessage = ConnectivityMessage;
         }
         finally
         {

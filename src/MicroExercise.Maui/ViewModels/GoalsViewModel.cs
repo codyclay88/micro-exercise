@@ -19,7 +19,7 @@ public sealed class GoalPoolOption(PoolItemDto item)
 /// <c>Goals.razor</c>: a create form over the active pool, then active goals (soonest deadline
 /// first) and a completed/expired history section.
 /// </summary>
-public partial class GoalsViewModel(GoalApi goalApi, PoolApi poolApi) : ObservableObject
+public partial class GoalsViewModel(GoalApi goalApi, PoolApi poolApi) : FeatureViewModel
 {
     public ObservableCollection<GoalPoolOption> PoolOptions { get; } = [];
     public ObservableCollection<GoalRow> ActiveGoals { get; } = [];
@@ -67,6 +67,7 @@ public partial class GoalsViewModel(GoalApi goalApi, PoolApi poolApi) : Observab
     {
         if (IsLoading) return;
         IsLoading = true;
+        ErrorMessage = null;
         try
         {
             var previousId = SelectedPool?.Id;
@@ -93,6 +94,10 @@ public partial class GoalsViewModel(GoalApi goalApi, PoolApi poolApi) : Observab
             }
             HasGoals = goals.Count > 0;
             HasDone = DoneGoals.Count > 0;
+        }
+        catch (Exception ex) when (IsConnectivityError(ex))
+        {
+            ErrorMessage = ConnectivityMessage;
         }
         finally
         {

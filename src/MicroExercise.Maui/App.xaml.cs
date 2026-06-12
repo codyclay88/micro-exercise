@@ -17,6 +17,7 @@ public partial class App : Application
     public App(IServiceProvider services, ISession session, AuthService auth)
     {
         InitializeComponent();
+        ThemePreference.Apply(this);   // restore the saved light/dark/system choice before any UI shows
         _services = services;
         _session = session;
         _auth = auth;
