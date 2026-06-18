@@ -12,6 +12,7 @@ WORKDIR /src
 # Restore first (cached unless project files change). Copy the solution + csproj layout.
 COPY MicroExercise.slnx ./
 COPY src/MicroExercise.Core/MicroExercise.Core.csproj          src/MicroExercise.Core/
+COPY src/MicroExercise.ApiClient/MicroExercise.ApiClient.csproj src/MicroExercise.ApiClient/
 COPY src/MicroExercise.Infrastructure/MicroExercise.Infrastructure.csproj src/MicroExercise.Infrastructure/
 COPY src/MicroExercise.Client/MicroExercise.Client.csproj      src/MicroExercise.Client/
 COPY src/MicroExercise.Web/MicroExercise.Web.csproj            src/MicroExercise.Web/
