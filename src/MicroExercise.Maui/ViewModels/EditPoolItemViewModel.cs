@@ -8,7 +8,7 @@ namespace MicroExercise.Maui.ViewModels;
 
 /// <summary>
 /// Backs the modal pool-item editor: set an optional custom name (overriding the type name) and the
-/// target, then PUT /api/exercises/pool/{id}. The Pool list refreshes when the modal is dismissed.
+/// last amount, then PUT /api/exercises/pool/{id}. The Pool list refreshes when the modal is dismissed.
 /// </summary>
 public partial class EditPoolItemViewModel : ObservableObject
 {
@@ -22,25 +22,25 @@ public partial class EditPoolItemViewModel : ObservableObject
         TypeName = typeName;
         // Prefill the current override, blank when the item just uses the type name.
         CustomName = string.Equals(item.DisplayName, typeName, StringComparison.Ordinal) ? null : item.DisplayName;
-        Target = item.TargetQuantity;
+        LastAmount = item.LastQuantity;
     }
 
     public string TypeName { get; }
     public string Unit => _item.TrackingType == TrackingType.Seconds ? "sec" : "reps";
 
     [ObservableProperty] private string? _customName;
-    [ObservableProperty] private int _target;
+    [ObservableProperty] private int _lastAmount;
     [ObservableProperty] private bool _isBusy;
 
     [RelayCommand]
     private async Task SaveAsync()
     {
-        if (IsBusy || Target <= 0) return;
+        if (IsBusy || LastAmount <= 0) return;
         IsBusy = true;
         try
         {
             var name = string.IsNullOrWhiteSpace(CustomName) ? null : CustomName.Trim();
-            await _poolApi.UpdatePoolItemAsync(_item.Id, new UpdatePoolItemRequest(name, Target));
+            await _poolApi.UpdatePoolItemAsync(_item.Id, new UpdatePoolItemRequest(name, LastAmount));
             await Shell.Current.Navigation.PopModalAsync();
         }
         finally

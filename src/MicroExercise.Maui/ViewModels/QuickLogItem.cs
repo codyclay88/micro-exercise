@@ -17,7 +17,7 @@ public partial class QuickLogItem : ObservableObject
     public QuickLogItem(PoolItemDto item)
     {
         Item = item;
-        Pending = item.TargetQuantity;
+        Pending = item.LastQuantity;   // pre-fill the stepper with the last burst's amount
     }
 
     public int Id => Item.Id;

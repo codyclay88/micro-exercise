@@ -62,7 +62,13 @@ else
                         else
                         {
                             <td class="text-nowrap">@b.Timestamp.LocalDateTime.ToString("MMM d, h:mm tt")</td>
-                            <td>@b.ExerciseName</td>
+                            <td>
+                                @b.ExerciseName
+                                @if (!b.Resistance.IsBodyweight)
+                                {
+                                    <span class="badge text-bg-light border ms-1 fw-normal">@b.Resistance.Describe()</span>
+                                }
+                            </td>
                             <td class="text-end text-nowrap">@b.Quantity <span class="text-secondary">@Unit(b.TrackingType)</span></td>
                             <td class="text-end text-nowrap">
                                 @if (_confirmDeleteId == b.Id)
@@ -98,6 +104,7 @@ else
     private long? _editingId;
     private int _editQuantity;
     private DateTime _editTimestamp;
+    private ResistanceDto _editResistance = ResistanceDto.Bodyweight;
 
     private long? _confirmDeleteId;
 
@@ -124,6 +131,7 @@ else
         _editingId = b.Id;
         _editQuantity = b.Quantity;
         _editTimestamp = b.Timestamp.LocalDateTime;
+        _editResistance = b.Resistance;   // preserved as-is; the inline edit only changes qty + time
     }
 
     private void CancelEdit() => _editingId = null;
@@ -136,7 +144,7 @@ else
         _busy = true;
         try
         {
-            var request = new UpdateLogRequest(_editQuantity, new DateTimeOffset(_editTimestamp));
+            var request = new UpdateLogRequest(_editQuantity, new DateTimeOffset(_editTimestamp), _editResistance);
             await LogApi.UpdateLogAsync(_editingId.Value, request);
             await LoadAsync(); // timestamp edits can change ordering — reload to stay correct
         }

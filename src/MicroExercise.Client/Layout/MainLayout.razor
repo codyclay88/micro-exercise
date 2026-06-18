@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject BurstLogPrompt Prompt
 
 @* Responsive navbar: links collapse behind a hamburger below the `md` breakpoint (phones),
    inline on larger screens. The toggle is driven by Blazor state (no Bootstrap JS dependency). *@
@@ -30,6 +31,9 @@
                         <NavLink class="nav-link" href="/goals" @onclick="CloseNav">Goals</NavLink>
                         <NavLink class="nav-link" href="/pool" @onclick="CloseNav">Pool</NavLink>
                     </div>
+                    @* Log a burst from anywhere — opens the shared dialog in picker mode. *@
+                    <button class="btn btn-sm btn-primary me-md-3 my-1 my-md-0" type="button"
+                            @onclick="() => Prompt.Request()" title="Log a burst">＋ Log</button>
                     <span class="navbar-text small text-secondary me-md-3 py-1 py-md-0">@auth.User.Identity?.Name</span>
                     <form action="account/logout" method="post" class="py-1 py-md-0">
                         <button type="submit" class="btn btn-sm btn-outline-secondary border-0 ps-0 ps-md-2">Sign out</button>
@@ -43,6 +47,13 @@
 <main class="container pb-5">
     @Body
 </main>
+
+@* Single app-wide instance of the burst-log dialog; opened via BurstLogPrompt from any screen. *@
+<AuthorizeView>
+    <Authorized>
+        <BurstLogDialog />
+    </Authorized>
+</AuthorizeView>
 
 @code {
     private bool _navOpen;

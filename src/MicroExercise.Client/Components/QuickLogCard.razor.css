@@ -7,54 +7,8 @@
     transform: scale(0.97);
 }
 
-.quick-log-card .stepper {
-    width: 3rem;
-    font-size: 1.25rem;
-    line-height: 1;
-}
-
-/* Card is the positioning context for the keycap hint. */
-.quick-log-card {
-    position: relative;
-}
-
-/* Keyboard hotkey hint (1-9). Hidden on touch-only devices where it's useless. */
-.quick-log-card .key-hint {
-    position: absolute;
-    top: 0.4rem;
-    left: 0.4rem;
-    z-index: 1;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.35rem;
-    color: var(--bs-secondary-color);
-    background: var(--bs-tertiary-bg);
-    border: 1px solid var(--bs-border-color);
-}
-
-@media (hover: none) {
-    .quick-log-card .key-hint {
-        display: none;
-    }
-}
-
-/* List-view inline keycap — rendered in flow (not absolutely positioned) so it doesn't
-   overlap the exercise name in the compact row. Hidden on touch like its grid counterpart. */
-.quick-log-card .key-hint-inline {
-    font-size: 0.7rem;
-    padding: 0.1rem 0.35rem;
-    color: var(--bs-secondary-color);
-    background: var(--bs-tertiary-bg);
-    border: 1px solid var(--bs-border-color);
-}
-
-@media (hover: none) {
-    .quick-log-card .key-hint-inline {
-        display: none;
-    }
-}
-
-/* Brief glow confirming a burst was logged — feedback for mouse-free hotkey use.
-   Two identical classes are alternated so consecutive logs replay the animation. */
+/* Brief glow confirming a burst was logged. Two identical classes are alternated so
+   consecutive logs replay the animation. */
 .quick-log-card.logged-pulse-a,
 .quick-log-card.logged-pulse-b {
     animation: mb-log-pulse 0.45s ease-out;

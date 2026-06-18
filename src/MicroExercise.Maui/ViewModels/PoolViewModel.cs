@@ -59,7 +59,7 @@ public partial class PoolViewModel(PoolApi poolApi) : FeatureViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanAdd))]
-    private int _addTarget = 10;
+    private int _addAmount = 10;
 
     [ObservableProperty] private string? _addCustomName;
 
@@ -72,7 +72,7 @@ public partial class PoolViewModel(PoolApi poolApi) : FeatureViewModel
     public bool IsCustomMode => SelectedType?.IsCustomSentinel == true;
     public bool ShowCustomFields => IsCustomMode;
     public bool ShowOptionalName => SelectedType is not null && !IsCustomMode;
-    public bool CanAdd => AddTarget > 0
+    public bool CanAdd => AddAmount > 0
         && SelectedType is not null
         && (!IsCustomMode || !string.IsNullOrWhiteSpace(NewName))
         && !IsLoading;
@@ -127,16 +127,16 @@ public partial class PoolViewModel(PoolApi poolApi) : FeatureViewModel
             if (IsCustomMode)
             {
                 var tracking = NewTrackingTypeIndex == 1 ? TrackingType.Seconds : TrackingType.Reps;
-                await poolApi.AddCustomExerciseAsync(new CreateCustomExerciseRequest(NewName!.Trim(), tracking, AddTarget));
+                await poolApi.AddCustomExerciseAsync(new CreateCustomExerciseRequest(NewName!.Trim(), tracking, AddAmount));
                 NewName = null;
                 NewTrackingTypeIndex = 0;
             }
             else
             {
-                await poolApi.AddPoolItemAsync(new CreatePoolItemRequest(SelectedType!.TypeId, AddTarget, AddCustomName));
+                await poolApi.AddPoolItemAsync(new CreatePoolItemRequest(SelectedType!.TypeId, AddAmount, AddCustomName));
                 AddCustomName = null;
             }
-            AddTarget = 10;
+            AddAmount = 10;
         }
         finally
         {

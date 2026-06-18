@@ -11,6 +11,6 @@ public record PoolItemDto(
     int ExerciseTypeId,
     string DisplayName,
     TrackingType TrackingType,
-    int TargetQuantity,
+    int LastQuantity,
     int SortOrder,
     bool IsActive);

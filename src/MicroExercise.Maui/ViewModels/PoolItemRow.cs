@@ -18,7 +18,7 @@ public sealed class PoolItemRow(PoolItemDto item, string typeName, bool isFirst,
         get
         {
             var unit = item.TrackingType == TrackingType.Seconds ? "sec" : "reps";
-            var baseText = $"{item.TargetQuantity} {unit}";
+            var baseText = $"last {item.LastQuantity} {unit}";
             // Show the underlying type only when a custom name overrides it.
             return string.Equals(item.DisplayName, typeName, StringComparison.Ordinal)
                 ? baseText

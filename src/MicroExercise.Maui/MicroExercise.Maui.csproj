@@ -7,6 +7,10 @@
 		     would fail. Windows desktop is the locally-runnable target on this box. -->
 		<TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- Opt in to ALSO building Android on Windows (for emulator testing) without making the
+		     default solution build/tests depend on the Android SDK + JDK 17:
+		       dotnet build -t:Run -f net10.0-android -p:AndroidEmulator=true -->
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) and '$(AndroidEmulator)' == 'true'">net10.0-windows10.0.19041.0;net10.0-android</TargetFrameworks>
 
 		<!-- Note for MacCatalyst:
 		The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.

@@ -113,7 +113,7 @@ WASM client never sends a userId (the server derives it from the cookie).
   `MapStaticAssets()` — its fingerprinted endpoints can't serve the Blazor `_framework/*` files
   and it 500s. (So the server `App.razor` and `index.html` reference assets by plain path, not
   `@Assets`/`ImportMap`.)
-- **Shared static assets** (bootstrap, `app.css`, `js/theme.js`, `js/hotkeys.js`, favicon) live
+- **Shared static assets** (bootstrap, `app.css`, `js/theme.js`, `js/dialog.js`, favicon) live
   in **`Web/wwwroot`** and are referenced by absolute path from `Client/wwwroot/index.html`
   (which holds only `index.html`). No duplication across projects.
 - **`BlazorDisableThrowNavigationException`** is set in **both** Web and Client csproj — the

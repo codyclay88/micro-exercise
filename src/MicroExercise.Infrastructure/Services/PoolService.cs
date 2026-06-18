@@ -18,7 +18,7 @@ public class PoolService(AppDbContext db) : IPoolService
                 p.ExerciseTypeId,
                 p.CustomName ?? p.ExerciseType!.Name,
                 p.ExerciseType!.DefaultTrackingType,
-                p.TargetQuantity,
+                p.LastQuantity,
                 p.SortOrder,
                 p.IsActive))
             .ToListAsync(ct);
@@ -52,7 +52,7 @@ public class PoolService(AppDbContext db) : IPoolService
             UserId = userId,
             ExerciseTypeId = request.ExerciseTypeId,
             CustomName = customName,
-            TargetQuantity = request.TargetQuantity,
+            LastQuantity = request.LastQuantity,
             SortOrder = nextSortOrder,
             IsActive = true
         };
@@ -65,7 +65,7 @@ public class PoolService(AppDbContext db) : IPoolService
             entry.ExerciseTypeId,
             entry.CustomName ?? exerciseType.Name,
             exerciseType.DefaultTrackingType,
-            entry.TargetQuantity,
+            entry.LastQuantity,
             entry.SortOrder,
             entry.IsActive);
     }
@@ -96,7 +96,7 @@ public class PoolService(AppDbContext db) : IPoolService
         {
             UserId = userId,
             ExerciseTypeId = exerciseType.Id,
-            TargetQuantity = request.TargetQuantity,
+            LastQuantity = request.LastQuantity,
             SortOrder = nextSortOrder,
             IsActive = true
         };
@@ -108,7 +108,7 @@ public class PoolService(AppDbContext db) : IPoolService
             entry.ExerciseTypeId,
             exerciseType.Name,
             exerciseType.DefaultTrackingType,
-            entry.TargetQuantity,
+            entry.LastQuantity,
             entry.SortOrder,
             entry.IsActive);
     }
@@ -123,7 +123,7 @@ public class PoolService(AppDbContext db) : IPoolService
             return null;
 
         entry.CustomName = string.IsNullOrWhiteSpace(request.CustomName) ? null : request.CustomName.Trim();
-        entry.TargetQuantity = request.TargetQuantity;
+        entry.LastQuantity = request.LastQuantity;
         await db.SaveChangesAsync(ct);
 
         return new PoolItemDto(
@@ -131,7 +131,7 @@ public class PoolService(AppDbContext db) : IPoolService
             entry.ExerciseTypeId,
             entry.CustomName ?? entry.ExerciseType!.Name,
             entry.ExerciseType!.DefaultTrackingType,
-            entry.TargetQuantity,
+            entry.LastQuantity,
             entry.SortOrder,
             entry.IsActive);
     }

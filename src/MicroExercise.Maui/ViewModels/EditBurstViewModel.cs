@@ -41,7 +41,9 @@ public partial class EditBurstViewModel : ObservableObject
         try
         {
             var timestamp = new DateTimeOffset(Date.Date + Time);
-            await _log.UpdateLogAsync(_burst.Id, new UpdateLogRequest(Quantity, timestamp));
+            // The mobile editor only changes qty + time; carry the existing resistance through
+            // so the update doesn't reset it to bodyweight.
+            await _log.UpdateLogAsync(_burst.Id, new UpdateLogRequest(Quantity, timestamp, _burst.Resistance));
             await Shell.Current.Navigation.PopModalAsync();
         }
         finally

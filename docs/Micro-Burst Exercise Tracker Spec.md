@@ -7,7 +7,7 @@
 
 ## **1\. Overview & Core Philosophy**
 
-The Micro-Burst Exercise Tracker is designed specifically for desk workers, remote employees, and individuals practicing "exercise snacking" or "Greasing the Groove" (GTG). The fundamental philosophy of this application is **zero friction**. Logging a 2-to-5-minute burst of exercise must require minimal effort, minimal clicks, and zero interface lag so users can immediately return to their work tasks.
+The Micro-Burst Exercise Tracker is designed specifically for desk workers, remote employees, and individuals practicing "exercise snacking" or "Greasing the Groove" (GTG). The fundamental philosophy of this application is **low-friction, accurate logging**. Recording a 2-to-5-minute burst of exercise must take only a moment — a brief rest between sets — so users can capture the *true* amount they performed (reps-to-failure) and immediately return to their work tasks. The aim is to encourage training to failure, not to optimize for the largest number of fixed-size sets.
 
 ## **2\. Tech Stack Architecture**
 
@@ -30,25 +30,31 @@ The application relies on a compact, highly normalized four-table structure to m
 |  | UserId | INT | Foreign Key \-\> User(Id) |
 |  | ExerciseTypeId | INT | Foreign Key \-\> ExerciseType(Id) |
 |  | CustomName | VARCHAR(100) | Optional override (e.g., "KB RDL (35 lbs)") |
-|  | TargetQuantity | INT | Standard baseline burst volume per set (e.g., 10\) |
+|  | LastQuantity | INT | The most recent burst's amount; pre-fills the log dialog (your next burst is usually similar to your last). Seeded at creation, overwritten on each log; overtyped per set (e.g., 10\) |
 |  | IsActive | BOOLEAN | Soft-delete flag to protect historical data integrity |
 |  | SortOrder | INT | Ascending display priority for the dashboard grid (§4.2 prioritization) |
 | **WorkoutLog** (Transactional Data) | Id | BIGINT | Primary Key, Identity |
 |  | ExercisePoolId | INT | Foreign Key \-\> ExercisePool(Id) |
 |  | Timestamp | DATETIMEOFFSET | Crucial for maintaining accurate cross-timezone dates |
 |  | CompletedQuantity | INT | The precise reps or seconds performed in that single burst |
+|  | ResistanceType | VARCHAR(20) | How the burst's optional added resistance is expressed: `Bodyweight` (default, no added load), `Weight`, or `Band` |
+|  | ResistanceAmount | NUMERIC(6,2) (nullable) | Numeric load for a `Weight` burst (paired with WeightUnit); null otherwise |
+|  | WeightUnit | VARCHAR(20) (nullable) | Unit for ResistanceAmount: `Pounds` or `Kilograms`; null unless `Weight` |
+|  | BandLabel | VARCHAR(40) (nullable) | Free-text colour/label for a `Band` burst (e.g. "Green"); null otherwise |
 
 *Note: A standard User table managing minimal credentials and metadata completes the core operational dataset.*
 
 ## **4\. Functional Feature Specifications**
 
-### **4.1 The "One-Click Log" Dashboard (UX Core)**
+### **4.1 The Log Dashboard (UX Core)**
 
-The primary view of the application must prioritize immediate data entry.
+The primary view of the application must prioritize fast, accurate data entry.
 
-* **Grid Presentation:** Renders the user’s active ExercisePool items as actionable "Quick-Log Cards."  
-* **Primary Action:** Tapping or clicking the primary surface of the card immediately dispatches a POST request to write a log entry matching the pre-configured TargetQuantity.  
-* **Inline Modifiers:** Small \+ and \- stepper buttons must flank the main interaction zone, allowing micro-adjustments (e.g., logging 12 reps instead of 10\) completely inline without launching distinct modal windows.
+* **Grid Presentation:** Renders the user’s active ExercisePool items as "Quick-Log Cards," each showing the exercise and today's running totals.  
+* **Primary Action:** A card's **Log** button opens a shared burst-log dialog pre-targeted to that exercise. The user **free-types the amount actually performed** — the field is pre-filled with the exercise's `LastQuantity` — the amount you did on your most recent burst — as a convenient default, but it is meant to be overtyped: a set trained *to failure* rarely lands on a round number, and stepping `+1` forty-three times to reach 53 is hostile. This deliberately favors recording true reps-to-failure over racing to log fixed-size sets.  
+* **Shared, ubiquitous dialog:** The same dialog is reachable from anywhere via a global "＋ Log" action and includes an **exercise picker**, so a burst can be recorded without first navigating to the dashboard (e.g. straight from the Goals screen). Logging from any screen advances the relevant card totals and goal progress live.
+* **Create-while-logging:** The picker includes a "**＋ New exercise…**" option so a brand-new movement can be created *in the act of logging* — the user supplies a name and whether it's measured in Reps or Seconds, and the burst's quantity seeds the new exercise's target. This avoids the ceremony of registering an exercise in the pool before the first burst can be recorded (a common case: picking up a new movement and logging a quick set immediately). The new exercise persists as a reusable, user-owned custom exercise and a pool card, created via `POST /api/exercises/custom` before the burst is logged. When the pool is empty, the dialog opens straight into this mode.
+* **Optional resistance:** Each burst can record an optional resistance, defaulting to **Bodyweight** (no added load). For weighted movements the user enters a numeric amount plus a unit (lbs/kg); for resistance bands — whose load isn't reliably known — they enter a free-text colour/label (e.g. "Green"). Resistance is per-burst (not stored on the pool item) and shown alongside the amount in History.
 
 ### **4.2 Pool Management**
 
@@ -56,7 +62,7 @@ An administrative configuration panel where users tailor their recurring rotatio
 
 * Allows discovery and addition of predefined global ExerciseType entries.  
 * **Custom exercises:** users can create a brand-new exercise from scratch — choosing its name, tracking type (Reps or Seconds), and target — without it pre-existing in the global catalog (e.g. "Bunny Hops", 100 reps; "Planks", 30 seconds). A custom exercise is stored as a user-owned `ExerciseType` (`OwnerUserId` set) so it is private to its creator and reusable from their catalog for additional variants.  
-* Supports full customization of the target display text and target unit quantities.  
+* Supports full customization of the display text and the last-amount value.  
 * Provides sorting or prioritization mechanics to determine dashboard layout hierarchy.
 
 ### **4.3 Date-Range Analytics & Reporting**
@@ -69,28 +75,12 @@ A history and aggregation module helping users quantify their distributed daily 
 
 ### **4.4 Burst History & Editing**
 
-Because logging is one tap, accidental or imprecise entries are inevitable. Users must be able to review and correct their recorded bursts after the fact.
+Because logging is quick and free-typed, accidental or imprecise entries are inevitable. Users must be able to review and correct their recorded bursts after the fact.
 
-* **History View:** A dedicated `/history` page lists individual `WorkoutLog` bursts within a selected date range, most recent first, showing when each burst occurred, the exercise, and the amount.  
+* **History View:** A dedicated `/history` page lists individual `WorkoutLog` bursts within a selected date range, most recent first, showing when each burst occurred, the exercise, the amount, and any non-bodyweight resistance (e.g. "15 lbs", "Green band").  
 * **Edit:** A burst's quantity *and* timestamp can be corrected in place (inline), e.g. fixing a fat-fingered rep count or the time of day.  
 * **Delete:** A burst can be permanently removed (hard delete, with an inline confirm). Unlike `ExercisePool` soft-deletes, transactional bursts are genuinely discarded — an accidental entry is something the user wants gone, and this keeps report aggregation filter-free.  
 * **Ownership:** All edit/delete operations are scoped to the owning user.
-
-### **4.5 Keyboard Hotkeys (Dashboard)**
-
-Reinforces the zero-friction philosophy for desktop/keyboard users: a burst can be logged
-without touching the mouse.
-
-* **Bindings:** On the One-Click Log dashboard, digit keys **1–9** log the matching Quick-Log
-  Card (by display order). Each card shows a small keycap badge (`1`, `2`, …) so the bindings
-  are self-documenting; badges are hidden on touch-only devices.  
-* **Quantity:** A hotkey logs the card's standard `TargetQuantity` (the predictable "log my
-  usual set of exercise N" action); inline `+`/`−` adjustment remains mouse-only.  
-* **Confirmation:** The logged card briefly pulses so the action is visible without watching
-  the cursor.  
-* **Scope & safety:** The listener is active only on the dashboard (removed on navigation) and
-  ignores key-repeat, modifier combinations (Ctrl/Alt/⌘), and keystrokes typed into form
-  fields, so it never hijacks browser shortcuts or text entry.
 
 ## **5\. API Endpoint Contract**
 
@@ -99,23 +89,31 @@ GET  /api/exercises/pool
 Returns: Collection of active configured exercises for the logged-in user's quick-log grid.
 
 POST /api/exercises/pool  
-Body: { "exerciseTypeId": int, "targetQuantity": int, "customName": string }  
+Body: { "exerciseTypeId": int, "lastQuantity": int, "customName": string }  
 Returns: The newly instantiated ExercisePool entity object.
 
 POST /api/exercises/custom  
-Body: { "name": string, "trackingType": "Reps"|"Seconds", "targetQuantity": int }  
+Body: { "name": string, "trackingType": "Reps"|"Seconds", "lastQuantity": int }  
 Returns: The new pool item; a user-owned ExerciseType is created and added to the pool.
 
 POST /api/logs  
-Body: { "exercisePoolId": int, "quantity": int }  
-Returns: HTTP 201 Created confirmation of written workout log.
+Body: { "exercisePoolId": int, "quantity": int, "resistance"?: Resistance }  
+Returns: HTTP 201 Created confirmation of written workout log (echoes the resolved resistance).
+
+  Resistance (optional; omit/null = bodyweight) is one of:
+    { "type": "Bodyweight" }
+    { "type": "Weight", "amount": 15, "unit": "Pounds"|"Kilograms" }
+    { "type": "Band", "bandLabel": "Green" }
+  Incomplete shapes (Weight with no amount, Band with a blank label) normalize to Bodyweight.
 
 GET  /api/logs?from=YYYY-MM-DD\&to=YYYY-MM-DD  
 Returns: Array of individual bursts in range (most recent first) for the history view.
 
 PUT  /api/logs/{id}  
-Body: { "quantity": int, "timestamp": DateTimeOffset }  
-Returns: The corrected burst, or 404 if not found / not owned by the user.
+Body: { "quantity": int, "timestamp": DateTimeOffset, "resistance"?: Resistance }  
+Returns: The corrected burst, or 404 if not found / not owned by the user. Pass the burst's
+existing resistance to preserve it (the inline editors only change quantity + timestamp); a
+null/omitted resistance records bodyweight.
 
 DELETE /api/logs/{id}  
 Returns: HTTP 204 No Content, or 404 if not found / not owned by the user.

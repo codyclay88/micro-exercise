@@ -12,7 +12,7 @@ public class GoalServiceTests
 
     private static ExercisePool AddPool(TestDb db, int userId = UserId, int typeId = 1, bool active = true)
     {
-        var pool = new ExercisePool { UserId = userId, ExerciseTypeId = typeId, TargetQuantity = 10, IsActive = active };
+        var pool = new ExercisePool { UserId = userId, ExerciseTypeId = typeId, LastQuantity = 10, IsActive = active };
         db.Context.ExercisePool.Add(pool);
         db.Context.SaveChanges();
         return pool;

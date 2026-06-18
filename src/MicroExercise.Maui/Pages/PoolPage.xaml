@@ -45,8 +45,8 @@
                         </VerticalStackLayout>
 
                         <VerticalStackLayout Spacing="2">
-                            <Label Text="Target" FontSize="12" Opacity="0.6" />
-                            <Entry Keyboard="Numeric" Text="{Binding AddTarget}" />
+                            <Label Text="Last amount" FontSize="12" Opacity="0.6" />
+                            <Entry Keyboard="Numeric" Text="{Binding AddAmount}" />
                         </VerticalStackLayout>
 
                             <Button Text="Add" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" />

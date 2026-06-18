@@ -13,7 +13,7 @@ public class ReportServiceTests
     public async Task GetSummaryAsync_SumsVolumeAndCountsBurstsWithinRange()
     {
         using var db = new TestDb();
-        var pool = new ExercisePool { UserId = UserId, ExerciseTypeId = 1, TargetQuantity = 10, CustomName = null };
+        var pool = new ExercisePool { UserId = UserId, ExerciseTypeId = 1, LastQuantity = 10, CustomName = null };
         db.Context.ExercisePool.Add(pool);
         await db.Context.SaveChangesAsync();
 
@@ -44,8 +44,8 @@ public class ReportServiceTests
     public async Task GetSummaryAsync_GroupsPerPoolItem_AndUsesCustomName()
     {
         using var db = new TestDb();
-        var pushups = new ExercisePool { UserId = UserId, ExerciseTypeId = 1, TargetQuantity = 10 };
-        var hang = new ExercisePool { UserId = UserId, ExerciseTypeId = 6, TargetQuantity = 30, CustomName = "Bar Hang" };
+        var pushups = new ExercisePool { UserId = UserId, ExerciseTypeId = 1, LastQuantity = 10 };
+        var hang = new ExercisePool { UserId = UserId, ExerciseTypeId = 6, LastQuantity = 30, CustomName = "Bar Hang" };
         db.Context.ExercisePool.AddRange(pushups, hang);
         await db.Context.SaveChangesAsync();
 
