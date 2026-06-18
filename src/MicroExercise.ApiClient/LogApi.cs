@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using MicroExercise.Core.Dtos;
 
-namespace MicroExercise.Client.Services;
+namespace MicroExercise.ApiClient;
 
 /// <summary>Client for the burst-log endpoints under <c>/api/logs</c>.</summary>
 public class LogApi(HttpClient http)

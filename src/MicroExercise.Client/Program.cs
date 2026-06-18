@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MicroExercise.Client;
 using MicroExercise.Client.Authentication;
 using MicroExercise.Client.Services;
+using MicroExercise.ApiClient;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -24,5 +25,8 @@ builder.Services.AddScoped<PoolApi>();
 builder.Services.AddScoped<LogApi>();
 builder.Services.AddScoped<ReportApi>();
 builder.Services.AddScoped<GoalApi>();
+
+// App-wide burst-logging mediator: any screen opens the shared dialog and reacts to logged bursts.
+builder.Services.AddScoped<BurstLogPrompt>();
 
 await builder.Build().RunAsync();

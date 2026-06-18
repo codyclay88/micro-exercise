@@ -1,0 +1,273 @@
+@inject PoolApi PoolApi
+@inject LogApi LogApi
+@inject BurstLogPrompt Prompt
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* App-wide burst-logging dialog, hosted once in MainLayout. Opened from anywhere via
+   BurstLogPrompt.Request(...): a card/goal pre-targets one exercise; the navbar's "＋ Log"
+   opens it in picker mode. The user free-types reps/seconds to failure rather than stepping
+   to a target. CSS-only modal (no Bootstrap JS), matching the rest of the app. *@
+@if (_visible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" @onclick="Cancel" @onkeydown="OnKeyDown">
+        <div class="modal-dialog modal-dialog-centered" role="document" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5 mb-0">Log a burst</h2>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_pool is null)
+                    {
+                        <p class="text-secondary mb-0">Loading…</p>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="burst-exercise">Exercise</label>
+                            <select id="burst-exercise" class="form-select" value="@_selectedId" @onchange="OnExerciseChanged">
+                                @foreach (var p in _pool)
+                                {
+                                    <option value="@p.Id">@p.DisplayName</option>
+                                }
+                                <option value="@NewExerciseId">＋ New exercise…</option>
+                            </select>
+                        </div>
+                        @if (IsNew)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label small mb-1" for="burst-new-name">New exercise name</label>
+                                <input id="burst-new-name" @ref="_nameInput" type="text" maxlength="50"
+                                       placeholder="e.g. Sandbag Clean" class="form-control"
+                                       @bind="_newName" @bind:event="oninput" @onkeydown="OnKeyDown" />
+                                <div class="btn-group d-flex mt-2" role="group" aria-label="Measured in">
+                                    <button type="button"
+                                            class="btn @(_newTracking == TrackingType.Reps ? "btn-secondary" : "btn-outline-secondary")"
+                                            @onclick="() => _newTracking = TrackingType.Reps">Reps</button>
+                                    <button type="button"
+                                            class="btn @(_newTracking == TrackingType.Seconds ? "btn-secondary" : "btn-outline-secondary")"
+                                            @onclick="() => _newTracking = TrackingType.Seconds">Seconds</button>
+                                </div>
+                            </div>
+                        }
+                        <div>
+                            <label class="form-label small mb-1" for="burst-qty">
+                                @(IsSeconds ? "Seconds to failure" : "Reps to failure")
+                            </label>
+                            <div class="input-group input-group-lg">
+                                <input id="burst-qty" @ref="_qtyInput" type="number" inputmode="numeric" min="1"
+                                       class="form-control" @bind="_quantity" @bind:event="oninput" @onkeydown="OnKeyDown" />
+                                <span class="input-group-text">@UnitLabel</span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label small mb-1">Resistance</label>
+                            <div class="btn-group d-flex" role="group" aria-label="Resistance type">
+                                <button type="button"
+                                        class="btn @(_resistanceType == ResistanceType.Bodyweight ? "btn-secondary" : "btn-outline-secondary")"
+                                        @onclick="() => _resistanceType = ResistanceType.Bodyweight">Bodyweight</button>
+                                <button type="button"
+                                        class="btn @(_resistanceType == ResistanceType.Weight ? "btn-secondary" : "btn-outline-secondary")"
+                                        @onclick="() => _resistanceType = ResistanceType.Weight">Weight</button>
+                                <button type="button"
+                                        class="btn @(_resistanceType == ResistanceType.Band ? "btn-secondary" : "btn-outline-secondary")"
+                                        @onclick="() => _resistanceType = ResistanceType.Band">Band</button>
+                            </div>
+                            @if (_resistanceType == ResistanceType.Weight)
+                            {
+                                <div class="input-group mt-2">
+                                    <input type="number" inputmode="decimal" min="0" step="0.5" placeholder="Amount"
+                                           class="form-control" @bind="_weightAmount" @bind:event="oninput" @onkeydown="OnKeyDown" />
+                                    <button type="button"
+                                            class="btn @(_weightUnit == WeightUnit.Pounds ? "btn-secondary" : "btn-outline-secondary")"
+                                            @onclick="() => _weightUnit = WeightUnit.Pounds">lbs</button>
+                                    <button type="button"
+                                            class="btn @(_weightUnit == WeightUnit.Kilograms ? "btn-secondary" : "btn-outline-secondary")"
+                                            @onclick="() => _weightUnit = WeightUnit.Kilograms">kg</button>
+                                </div>
+                            }
+                            else if (_resistanceType == ResistanceType.Band)
+                            {
+                                <input type="text" maxlength="40" placeholder="Band colour / label, e.g. Green"
+                                       class="form-control mt-2" @bind="_bandLabel" @bind:event="oninput" @onkeydown="OnKeyDown" />
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Cancel" disabled="@_busy">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="LogAsync" disabled="@(!CanLog)">Log</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    // Sentinel id for the picker's "＋ New exercise…" option (no real pool item uses a negative id).
+    private const int NewExerciseId = -1;
+
+    private bool _visible;
+    private bool _busy;
+    private IReadOnlyList<PoolItemDto>? _pool;
+    private int _selectedId;
+    private int? _quantity;
+    private ElementReference _qtyInput;
+    private ElementReference _nameInput;
+    private bool _focusQueued;
+
+    // "＋ New exercise…" mode: create a brand-new custom exercise inline, then log against it,
+    // so a one-off movement doesn't require visiting the Pool page first.
+    private string? _newName;
+    private TrackingType _newTracking = TrackingType.Reps;
+
+    // Optional per-burst resistance. _weightUnit persists across opens (a user's preferred unit);
+    // the type/amount/label reset to plain Bodyweight each time the dialog opens.
+    private ResistanceType _resistanceType = ResistanceType.Bodyweight;
+    private decimal? _weightAmount;
+    private WeightUnit _weightUnit = WeightUnit.Pounds;
+    private string? _bandLabel;
+
+    private bool IsNew => _selectedId == NewExerciseId;
+    private PoolItemDto? Selected => _pool?.FirstOrDefault(p => p.Id == _selectedId);
+    private bool IsSeconds => IsNew ? _newTracking == TrackingType.Seconds : Selected?.TrackingType == TrackingType.Seconds;
+    private string UnitLabel => IsSeconds ? "sec" : "reps";
+    private bool ResistanceValid => _resistanceType switch
+    {
+        ResistanceType.Weight => _weightAmount is > 0,
+        ResistanceType.Band => !string.IsNullOrWhiteSpace(_bandLabel),
+        _ => true
+    };
+    private bool CanLog => !_busy && _quantity is > 0 && ResistanceValid
+        && (IsNew ? !string.IsNullOrWhiteSpace(_newName) : Selected is not null);
+
+    private ResistanceDto BuildResistance() => _resistanceType switch
+    {
+        ResistanceType.Weight => new ResistanceDto(ResistanceType.Weight, _weightAmount, _weightUnit),
+        ResistanceType.Band => new ResistanceDto(ResistanceType.Band, BandLabel: _bandLabel),
+        _ => ResistanceDto.Bodyweight
+    };
+
+    protected override void OnInitialized() => Prompt.Requested += OnRequested;
+
+    public void Dispose() => Prompt.Requested -= OnRequested;
+
+    private async void OnRequested(PoolItemDto? item)
+    {
+        // Show the shell immediately, then fill the picker from the freshly-loaded active pool so
+        // newly added exercises always appear (cheap same-origin GET).
+        _busy = false;
+        _visible = true;
+        _pool = null;
+        // Start each burst at plain bodyweight; keep the remembered weight unit.
+        _resistanceType = ResistanceType.Bodyweight;
+        _weightAmount = null;
+        _bandLabel = null;
+        // Reset the inline new-exercise fields each open.
+        _newName = null;
+        _newTracking = TrackingType.Reps;
+        await InvokeAsync(StateHasChanged);
+
+        IReadOnlyList<PoolItemDto> pool;
+        try
+        {
+            pool = await PoolApi.GetActivePoolAsync();
+        }
+        catch
+        {
+            // Rare (offline): just close rather than leaving a half-open dialog.
+            _visible = false;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        _pool = pool;
+        // Preselect the requested exercise when it's still active; else the first card; and when the
+        // pool is empty, drop straight into "new exercise" mode so there's no dead-end.
+        _selectedId = item is not null && pool.Any(p => p.Id == item.Id)
+            ? item.Id
+            : pool.Count > 0 ? pool[0].Id : NewExerciseId;
+        _quantity = IsNew ? null : Selected?.LastQuantity;
+        _focusQueued = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnExerciseChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+        {
+            _selectedId = id;
+            // A pool item pre-fills its target; "new exercise" starts blank (no target yet).
+            _quantity = IsNew ? null : Selected?.LastQuantity;
+            _focusQueued = true;
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter")
+            await LogAsync();
+        else if (e.Key == "Escape")
+            Cancel();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusQueued && _visible)
+        {
+            _focusQueued = false;
+            // Focus the new-exercise name when creating one, otherwise the quantity field.
+            var target = IsNew ? _nameInput : _qtyInput;
+            try { await JS.InvokeVoidAsync("microburstDialog.focusSelect", target); }
+            catch (JSException) { /* focus is a nicety; never let it break the dialog */ }
+        }
+    }
+
+    private void Cancel()
+    {
+        _visible = false;
+        _busy = false;
+    }
+
+    private async Task LogAsync()
+    {
+        if (!CanLog)
+            return;
+
+        _busy = true;
+        try
+        {
+            var qty = _quantity!.Value;
+
+            // For a new exercise, create it first (custom type + pool entry in one call) and log
+            // against the returned pool id. Reuse the burst's quantity as the initial target.
+            int poolId;
+            if (IsNew)
+            {
+                var created = await PoolApi.AddCustomExerciseAsync(
+                    new CreateCustomExerciseRequest(_newName!.Trim(), _newTracking, qty));
+                if (created is null)
+                    return;   // validation failed — leave the dialog open to retry
+                poolId = created.Id;
+            }
+            else
+            {
+                poolId = Selected!.Id;
+            }
+
+            var result = await LogApi.LogAsync(new CreateLogRequest(poolId, qty, BuildResistance()));
+            if (result is null)
+                return;   // pool item not owned/active (rare) — leave the dialog open to retry
+
+            Prompt.NotifyLogged(new BurstLogged(
+                result.ExercisePoolId, result.CompletedQuantity, result.Timestamp, CreatedPoolItem: IsNew));
+            _visible = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

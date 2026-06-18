@@ -16,7 +16,7 @@ public class PoolServiceTests
         var sut = new PoolService(db.Context);
 
         var created = await sut.AddPoolItemAsync(UserId,
-            new CreatePoolItemRequest(ExerciseTypeId: 1, TargetQuantity: 10, CustomName: null));
+            new CreatePoolItemRequest(ExerciseTypeId: 1, LastQuantity: 10, CustomName: null));
 
         Assert.True(created.Id > 0);
         Assert.True(created.IsActive);
@@ -34,7 +34,7 @@ public class PoolServiceTests
         var sut = new PoolService(db.Context);
 
         var created = await sut.AddPoolItemAsync(UserId,
-            new CreatePoolItemRequest(ExerciseTypeId: 4, TargetQuantity: 15, CustomName: "KB Swings (35 lbs)"));
+            new CreatePoolItemRequest(ExerciseTypeId: 4, LastQuantity: 15, CustomName: "KB Swings (35 lbs)"));
 
         Assert.Equal("KB Swings (35 lbs)", created.DisplayName);
     }
@@ -46,7 +46,7 @@ public class PoolServiceTests
         var sut = new PoolService(db.Context);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            sut.AddPoolItemAsync(UserId, new CreatePoolItemRequest(ExerciseTypeId: 999, TargetQuantity: 10, CustomName: null)));
+            sut.AddPoolItemAsync(UserId, new CreatePoolItemRequest(ExerciseTypeId: 999, LastQuantity: 10, CustomName: null)));
     }
 
     [Fact]
@@ -67,9 +67,9 @@ public class PoolServiceTests
     {
         using var db = new TestDb();
         db.Context.ExercisePool.AddRange(
-            new ExercisePool { UserId = UserId, ExerciseTypeId = 1, TargetQuantity = 10, SortOrder = 2, IsActive = true },
-            new ExercisePool { UserId = UserId, ExerciseTypeId = 2, TargetQuantity = 5, SortOrder = 0, IsActive = true },
-            new ExercisePool { UserId = UserId, ExerciseTypeId = 3, TargetQuantity = 20, SortOrder = 1, IsActive = false });
+            new ExercisePool { UserId = UserId, ExerciseTypeId = 1, LastQuantity = 10, SortOrder = 2, IsActive = true },
+            new ExercisePool { UserId = UserId, ExerciseTypeId = 2, LastQuantity = 5, SortOrder = 0, IsActive = true },
+            new ExercisePool { UserId = UserId, ExerciseTypeId = 3, LastQuantity = 20, SortOrder = 1, IsActive = false });
         await db.Context.SaveChangesAsync();
 
         var sut = new PoolService(db.Context);

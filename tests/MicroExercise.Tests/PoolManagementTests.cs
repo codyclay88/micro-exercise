@@ -17,7 +17,7 @@ public class PoolManagementTests
         {
             UserId = userId,
             ExerciseTypeId = exerciseTypeId,
-            TargetQuantity = 10,
+            LastQuantity = 10,
             SortOrder = sortOrder,
             CustomName = custom
         };
@@ -38,7 +38,7 @@ public class PoolManagementTests
 
         Assert.NotNull(updated);
         Assert.Equal("KB RDL (35 lbs)", updated!.DisplayName);
-        Assert.Equal(15, updated.TargetQuantity);
+        Assert.Equal(15, updated.LastQuantity);
     }
 
     [Fact]

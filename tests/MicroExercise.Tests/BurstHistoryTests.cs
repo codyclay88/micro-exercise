@@ -1,6 +1,7 @@
 using MicroExercise.Core;
 using MicroExercise.Core.Dtos;
 using MicroExercise.Core.Entities;
+using MicroExercise.Core.Enums;
 using MicroExercise.Infrastructure.Identity;
 using MicroExercise.Infrastructure.Services;
 
@@ -13,7 +14,7 @@ public class BurstHistoryTests
 
     private static async Task<int> AddPoolEntryAsync(TestDb db, int userId, int exerciseTypeId = 1)
     {
-        var entry = new ExercisePool { UserId = userId, ExerciseTypeId = exerciseTypeId, TargetQuantity = 10 };
+        var entry = new ExercisePool { UserId = userId, ExerciseTypeId = exerciseTypeId, LastQuantity = 10 };
         db.Context.ExercisePool.Add(entry);
         await db.Context.SaveChangesAsync();
         return entry.Id;
@@ -61,6 +62,71 @@ public class BurstHistoryTests
 
         Assert.Single(history);
         Assert.Equal(10, history[0].Quantity);
+    }
+
+    [Fact]
+    public async Task GetHistoryAsync_ProjectsResistance()
+    {
+        using var db = new TestDb();
+        var poolId = await AddPoolEntryAsync(db, UserId);
+        db.Context.WorkoutLogs.Add(new WorkoutLog
+        {
+            ExercisePoolId = poolId, CompletedQuantity = 10, Timestamp = Anchor,
+            ResistanceType = ResistanceType.Weight, ResistanceAmount = 20m, WeightUnit = WeightUnit.Pounds
+        });
+        await db.Context.SaveChangesAsync();
+
+        var sut = new LogService(db.Context);
+        var history = await sut.GetHistoryAsync(UserId, Anchor.AddDays(-1), Anchor.AddDays(1));
+
+        var burst = Assert.Single(history);
+        Assert.Equal(ResistanceType.Weight, burst.Resistance.Type);
+        Assert.Equal(20m, burst.Resistance.Amount);
+        Assert.Equal(WeightUnit.Pounds, burst.Resistance.Unit);
+        Assert.Equal("20 lbs", burst.Resistance.Describe());
+    }
+
+    [Fact]
+    public async Task UpdateLogAsync_ChangesResistance()
+    {
+        using var db = new TestDb();
+        var poolId = await AddPoolEntryAsync(db, UserId);
+        var logId = await AddLogAsync(db, poolId, 10, Anchor);   // starts bodyweight
+
+        var sut = new LogService(db.Context);
+        var request = new UpdateLogRequest(10, Anchor, new ResistanceDto(ResistanceType.Band, BandLabel: "Red"));
+        var updated = await sut.UpdateLogAsync(UserId, logId, request);
+
+        Assert.NotNull(updated);
+        Assert.Equal(ResistanceType.Band, updated!.Resistance.Type);
+        Assert.Equal("Red", updated.Resistance.BandLabel);
+
+        await using var verify = db.NewContext();
+        Assert.Equal("Red", verify.WorkoutLogs.Single(l => l.Id == logId).BandLabel);
+    }
+
+    [Fact]
+    public async Task UpdateLogAsync_WithExistingResistance_PreservesIt()
+    {
+        using var db = new TestDb();
+        var poolId = await AddPoolEntryAsync(db, UserId);
+        db.Context.WorkoutLogs.Add(new WorkoutLog
+        {
+            ExercisePoolId = poolId, CompletedQuantity = 10, Timestamp = Anchor,
+            ResistanceType = ResistanceType.Weight, ResistanceAmount = 25m, WeightUnit = WeightUnit.Pounds
+        });
+        await db.Context.SaveChangesAsync();
+        var logId = db.Context.WorkoutLogs.Single().Id;
+        var existing = new ResistanceDto(ResistanceType.Weight, 25m, WeightUnit.Pounds);
+
+        var sut = new LogService(db.Context);
+        // Edit only the quantity; pass the existing resistance through (mirrors the History edit UI).
+        var updated = await sut.UpdateLogAsync(UserId, logId, new UpdateLogRequest(18, Anchor, existing));
+
+        Assert.NotNull(updated);
+        Assert.Equal(18, updated!.Quantity);
+        Assert.Equal(ResistanceType.Weight, updated.Resistance.Type);
+        Assert.Equal(25m, updated.Resistance.Amount);
     }
 
     [Fact]

@@ -1,8 +1,10 @@
 @page "/goals"
 @attribute [Authorize]
+@implements IDisposable
 @using System.Globalization
 @inject GoalApi GoalApi
 @inject PoolApi PoolApi
+@inject BurstLogPrompt Prompt
 
 <PageTitle>Micro-Burst · Goals</PageTitle>
 
@@ -92,7 +94,7 @@ else
 
 @code {
     private IReadOnlyList<PoolItemDto>? _pool;
-    private IReadOnlyList<GoalDto>? _goals;
+    private List<GoalDto>? _goals;
     private bool _busy;
     private int? _confirmDeleteId;
 
@@ -104,10 +106,65 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Advance goal bars live when a burst is logged from here (a goal's Log button) or elsewhere.
+        Prompt.Logged += OnBurstLogged;
+
         _pool = await PoolApi.GetActivePoolAsync();
         _poolId = _pool.FirstOrDefault()?.Id ?? 0;
         await LoadGoalsAsync();
     }
+
+    /// <summary>The active pool item a goal is tracked against, or null if it was since removed.</summary>
+    private PoolItemDto? PoolFor(GoalDto g) => _pool?.FirstOrDefault(p => p.Id == g.ExercisePoolId);
+
+    /// <summary>Open the shared dialog pre-targeted to this goal's exercise.</summary>
+    private void LogFor(GoalDto g)
+    {
+        var item = PoolFor(g);
+        if (item is not null)
+            Prompt.Request(item);
+    }
+
+    /// <summary>Fold a logged burst into any in-window goal so its bar advances without a reload.</summary>
+    private void OnBurstLogged(BurstLogged e)
+    {
+        if (_goals is null)
+            return;
+
+        var changed = false;
+        for (var i = 0; i < _goals.Count; i++)
+        {
+            var g = _goals[i];
+            if (g.ExercisePoolId == e.ExercisePoolId && e.Timestamp >= g.StartDate && e.Timestamp <= g.Deadline)
+            {
+                _goals[i] = WithProgress(g, g.CurrentProgress + e.Quantity);
+                changed = true;
+            }
+        }
+
+        if (changed)
+            StateHasChanged();
+    }
+
+    // Recompute the derived fields client-side so the bar advances without a server round-trip
+    // (mirrors GoalService.ToDto; an active goal can only cross into Achieved here).
+    private static GoalDto WithProgress(GoalDto g, int progress)
+    {
+        var remaining = Math.Max(0, g.TargetQuantity - progress);
+        var percent = g.TargetQuantity <= 0
+            ? 0
+            : Math.Min(100, Math.Round(100.0 * progress / g.TargetQuantity, 1));
+        var status = progress >= g.TargetQuantity ? GoalStatus.Achieved : g.Status;
+        return g with
+        {
+            CurrentProgress = progress,
+            RemainingQuantity = remaining,
+            PercentComplete = percent,
+            Status = status
+        };
+    }
+
+    public void Dispose() => Prompt.Logged -= OnBurstLogged;
 
     private static string Unit(TrackingType t) => t == TrackingType.Seconds ? "sec" : "reps";
 
@@ -194,6 +251,11 @@ else
                     <span class="fw-medium">@g.ExerciseName</span>
                     <span class="text-secondary small ms-1">@g.CurrentProgress / @g.TargetQuantity @Unit(g.TrackingType)</span>
                 </div>
+                @if (PoolFor(g) is not null)
+                {
+                    <button class="btn btn-sm btn-outline-primary border-0 py-0 me-1" title="Log a burst for this exercise"
+                            @onclick="() => LogFor(g)">Log</button>
+                }
                 <span class="badge @StatusBadgeClass(g.Status) me-2">@g.Status</span>
                 @if (_confirmDeleteId == g.Id)
                 {

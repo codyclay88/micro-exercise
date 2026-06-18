@@ -53,8 +53,8 @@ public static class ApiEndpoints
             var errors = new Dictionary<string, string[]>();
             if (string.IsNullOrWhiteSpace(request.Name))
                 errors["name"] = ["Exercise name is required."];
-            if (request.TargetQuantity <= 0)
-                errors["targetQuantity"] = ["Target quantity must be greater than zero."];
+            if (request.LastQuantity <= 0)
+                errors["lastQuantity"] = ["Amount must be greater than zero."];
             if (errors.Count > 0)
                 return Results.ValidationProblem(errors);
 
@@ -66,10 +66,10 @@ public static class ApiEndpoints
         api.MapPost("/exercises/pool", async (
             CreatePoolItemRequest request, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
         {
-            if (request.TargetQuantity <= 0)
+            if (request.LastQuantity <= 0)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["targetQuantity"] = ["Target quantity must be greater than zero."]
+                    ["lastQuantity"] = ["Amount must be greater than zero."]
                 });
 
             try
@@ -90,10 +90,10 @@ public static class ApiEndpoints
         api.MapPut("/exercises/pool/{id:int}", async (
             int id, UpdatePoolItemRequest request, IPoolService pool, ICurrentUser user, CancellationToken ct) =>
         {
-            if (request.TargetQuantity <= 0)
+            if (request.LastQuantity <= 0)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["targetQuantity"] = ["Target quantity must be greater than zero."]
+                    ["lastQuantity"] = ["Amount must be greater than zero."]
                 });
 
             var updated = await pool.UpdatePoolItemAsync(user.UserId, id, request, ct);

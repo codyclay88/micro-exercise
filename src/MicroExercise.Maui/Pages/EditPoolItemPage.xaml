@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.EditPoolItemPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:DataType="vm:EditPoolItemViewModel"
+    Title="Edit exercise">
+
+    <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="480" HorizontalOptions="Center">
+        <Label Text="{Binding TypeName}" FontSize="22" FontAttributes="Bold" />
+
+        <VerticalStackLayout Spacing="2">
+            <Label Text="Custom name (optional)" FontSize="12" Opacity="0.6" />
+            <Entry Placeholder="{Binding TypeName}" MaxLength="100" Text="{Binding CustomName}" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Spacing="2">
+            <Label Text="Last amount" FontSize="12" Opacity="0.6" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry Grid.Column="0" Keyboard="Numeric" Text="{Binding LastAmount}" />
+                <Label Grid.Column="1" Text="{Binding Unit}" VerticalOptions="Center" Opacity="0.6" />
+            </Grid>
+        </VerticalStackLayout>
+
+        <HorizontalStackLayout Spacing="12">
+            <Button Text="Save" Command="{Binding SaveCommand}" />
+            <Button Text="Cancel" Command="{Binding CancelCommand}" />
+        </HorizontalStackLayout>
+    </VerticalStackLayout>
+</ContentPage>

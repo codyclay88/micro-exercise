@@ -42,10 +42,10 @@ namespace MicroExercise.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<int>("SortOrder")
+                    b.Property<int>("LastQuantity")
                         .HasColumnType("integer");
 
-                    b.Property<int>("TargetQuantity")
+                    b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
                     b.Property<int>("UserId")
@@ -181,14 +181,33 @@ namespace MicroExercise.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("BandLabel")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<int>("CompletedQuantity")
                         .HasColumnType("integer");
 
                     b.Property<int>("ExercisePoolId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("ResistanceAmount")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<string>("ResistanceType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Bodyweight");
+
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WeightUnit")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 

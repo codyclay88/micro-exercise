@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.LoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:DataType="vm:LoginViewModel"
+    Title="Sign in">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="24"
+            Spacing="16"
+            HorizontalOptions="Center"
+            MaximumWidthRequest="420"
+            VerticalOptions="Center">
+
+            <Label
+                Text="Micro-Burst"
+                FontSize="32"
+                HorizontalOptions="Center" />
+            <Label
+                Text="Sign in"
+                FontSize="18"
+                Opacity="0.7"
+                HorizontalOptions="Center" />
+
+            <Label
+                Text="{Binding Error}"
+                IsVisible="{Binding HasError}"
+                TextColor="#D9534F" />
+
+            <Entry
+                Placeholder="Email"
+                Keyboard="Email"
+                Text="{Binding Email}" />
+
+            <Entry
+                Placeholder="Password"
+                IsPassword="True"
+                Text="{Binding Password}" />
+
+            <HorizontalStackLayout Spacing="8">
+                <CheckBox IsChecked="{Binding RememberMe}" />
+                <Label Text="Keep me signed in" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <Button
+                Text="Sign in"
+                Command="{Binding SignInCommand}"
+                IsEnabled="{Binding IsNotBusy}" />
+
+            <ActivityIndicator
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

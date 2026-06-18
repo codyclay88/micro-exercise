@@ -60,9 +60,9 @@
     // A handful of sensible starter exercises so the dashboard isn't empty on first login.
     private static readonly CreatePoolItemRequest[] StarterPool =
     [
-        new(ExerciseTypeId: 1, TargetQuantity: 10, CustomName: null), // Push-ups
-        new(ExerciseTypeId: 3, TargetQuantity: 20, CustomName: null), // Bodyweight Squats
-        new(ExerciseTypeId: 6, TargetQuantity: 30, CustomName: null), // Dead Hang
+        new(ExerciseTypeId: 1, LastQuantity: 10, CustomName: null), // Push-ups
+        new(ExerciseTypeId: 3, LastQuantity: 20, CustomName: null), // Bodyweight Squats
+        new(ExerciseTypeId: 6, LastQuantity: 30, CustomName: null), // Dead Hang
     ];
 
     [SupplyParameterFromForm] private InputModel Input { get; set; } = new();

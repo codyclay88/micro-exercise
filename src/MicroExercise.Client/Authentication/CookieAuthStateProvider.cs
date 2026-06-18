@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
-using MicroExercise.Client.Services;
+using MicroExercise.ApiClient;
 using MicroExercise.Core.Dtos;
 
 namespace MicroExercise.Client.Authentication;

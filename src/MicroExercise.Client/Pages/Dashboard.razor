@@ -1,11 +1,11 @@
 @page "/"
 @attribute [Authorize]
-@implements IAsyncDisposable
+@implements IDisposable
 @using System.Globalization
 @inject PoolApi PoolApi
-@inject LogApi LogApi
 @inject ReportApi ReportApi
 @inject GoalApi GoalApi
+@inject BurstLogPrompt Prompt
 @inject IJSRuntime JS
 
 <PageTitle>Micro-Burst · Log</PageTitle>
@@ -76,41 +76,30 @@ else
     @if (_view == "list")
     {
         <div class="vstack gap-2">
-            @for (var i = 0; i < _pool.Count; i++)
+            @foreach (var item in _pool)
             {
-                var item = _pool[i];
                 var stats = _today.GetValueOrDefault(item.Id);
-                int? keyHint = i < 9 ? i + 1 : null;
                 <QuickLogCard Item="item"
                               TodayBursts="stats.Bursts"
                               TodayVolume="stats.Volume"
-                              KeyHint="keyHint"
-                              Compact="true"
-                              OnLog="qty => LogAsync(item, qty)" />
+                              Compact="true" />
             }
         </div>
     }
     else
     {
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-            @for (var i = 0; i < _pool.Count; i++)
+            @foreach (var item in _pool)
             {
-                var item = _pool[i];
                 var stats = _today.GetValueOrDefault(item.Id);
-                int? keyHint = i < 9 ? i + 1 : null;
                 <div class="col">
                     <QuickLogCard Item="item"
                                   TodayBursts="stats.Bursts"
-                                  TodayVolume="stats.Volume"
-                                  KeyHint="keyHint"
-                                  OnLog="qty => LogAsync(item, qty)" />
+                                  TodayVolume="stats.Volume" />
                 </div>
             }
         </div>
     }
-    <p class="text-secondary small mt-3 mb-0 d-none d-md-block">
-        Tip: press <kbd>1</kbd>–<kbd>9</kbd> to log a card without the mouse.
-    </p>
 }
 
 @code {
@@ -119,10 +108,12 @@ else
     private int _totalBurstsToday;
     private List<GoalDto>? _goals;
     private string _view = "grid";   // "grid" | "list"; restored from localStorage
-    private DotNetObjectReference<Dashboard>? _selfRef;
 
     protected override async Task OnInitializedAsync()
     {
+        // React to bursts logged from anywhere (a card here, a goal row, the navbar's "＋ Log").
+        Prompt.Logged += OnBurstLogged;
+
         // Restore the saved view before the first render to avoid a grid→list flash.
         // Best-effort: a missing/blocked prefs helper must never crash the Log page.
         try
@@ -192,65 +183,41 @@ else
         };
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    /// <summary>Fold a burst logged anywhere into today's totals and any active goal — the card
+    /// for this exercise pulses (its TodayBursts ticks up) and goal bars advance without a reload.</summary>
+    private async void OnBurstLogged(BurstLogged e)
     {
-        if (firstRender)
+        if (_pool is null)
+            return;
+
+        // Only reflect exercises shown on this screen. A brand-new exercise created from the log
+        // dialog isn't in our loaded pool yet — pull the refreshed pool so its card appears live.
+        if (!_pool.Any(p => p.Id == e.ExercisePoolId))
         {
-            _selfRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("microburstHotkeys.register", _selfRef);
+            if (!e.CreatedPoolItem)
+                return;
+            _pool = await PoolApi.GetActivePoolAsync();
+            if (!_pool.Any(p => p.Id == e.ExercisePoolId))
+                return;   // defensive: still absent (e.g. deactivated)
         }
-    }
 
-    /// <summary>Invoked from hotkeys.js when a 1-9 digit key is pressed. Logs the
-    /// matching card's standard target quantity (mouse-free quick log).</summary>
-    [JSInvokable]
-    public async Task OnHotkey(int number)
-    {
-        if (_pool is null || number < 1 || number > _pool.Count)
-            return;
-
-        var item = _pool[number - 1];
-        await LogAsync(item, item.TargetQuantity);
-        StateHasChanged();
-    }
-
-    private async Task LogAsync(PoolItemDto item, int quantity)
-    {
-        var result = await LogApi.LogAsync(new CreateLogRequest(item.Id, quantity));
-        if (result is null)
-            return;
-
-        var current = _today.GetValueOrDefault(item.Id);
-        _today[item.Id] = (current.Bursts + 1, current.Volume + quantity);
+        var current = _today.GetValueOrDefault(e.ExercisePoolId);
+        _today[e.ExercisePoolId] = (current.Bursts + 1, current.Volume + e.Quantity);
         _totalBurstsToday++;
 
-        // Advance any active goal on this exercise whose window contains now.
+        // Advance any active goal on this exercise whose window contains the burst.
         if (_goals is not null)
         {
-            var now = DateTimeOffset.Now;
             for (var i = 0; i < _goals.Count; i++)
             {
                 var g = _goals[i];
-                if (g.ExercisePoolId == item.Id && now >= g.StartDate && now <= g.Deadline)
-                    _goals[i] = WithProgress(g, g.CurrentProgress + quantity);
+                if (g.ExercisePoolId == e.ExercisePoolId && e.Timestamp >= g.StartDate && e.Timestamp <= g.Deadline)
+                    _goals[i] = WithProgress(g, g.CurrentProgress + e.Quantity);
             }
         }
+
+        StateHasChanged();
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        if (_selfRef is null)
-            return;
-
-        try
-        {
-            await JS.InvokeVoidAsync("microburstHotkeys.unregister");
-        }
-        catch (JSDisconnectedException)
-        {
-            // Browser is going away — nothing to clean up.
-        }
-
-        _selfRef.Dispose();
-    }
+    public void Dispose() => Prompt.Logged -= OnBurstLogged;
 }

@@ -18,8 +18,12 @@ public class ExercisePool
     /// <summary>Optional display override, e.g. "KB RDL (35 lbs)". Falls back to the type name.</summary>
     public string? CustomName { get; set; }
 
-    /// <summary>Standard baseline burst volume logged by a single one-click tap.</summary>
-    public int TargetQuantity { get; set; }
+    /// <summary>
+    /// The amount performed on the most recent burst — pre-fills the log dialog (your next burst
+    /// is usually similar to your last). Seeded when the pool item is created and overwritten on
+    /// each new burst; overtyped per set (not a cap).
+    /// </summary>
+    public int LastQuantity { get; set; }
 
     /// <summary>Soft-delete flag; inactive entries leave the grid but retain their history.</summary>
     public bool IsActive { get; set; } = true;

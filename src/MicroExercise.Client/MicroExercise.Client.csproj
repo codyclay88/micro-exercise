@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MicroExercise.Core\MicroExercise.Core.csproj" />
+    <ProjectReference Include="..\MicroExercise.ApiClient\MicroExercise.ApiClient.csproj" />
   </ItemGroup>
 
   <ItemGroup>

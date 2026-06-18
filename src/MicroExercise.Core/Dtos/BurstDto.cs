@@ -13,4 +13,5 @@ public record BurstDto(
     string ExerciseName,
     TrackingType TrackingType,
     int Quantity,
-    DateTimeOffset Timestamp);
+    DateTimeOffset Timestamp,
+    ResistanceDto Resistance);

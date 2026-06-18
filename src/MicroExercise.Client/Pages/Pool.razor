@@ -53,12 +53,12 @@ else
                 }
 
                 <div class="col-6 col-md-2">
-                    <label class="form-label small mb-0">Target</label>
-                    <input type="number" min="1" class="form-control form-control-sm" @bind="_addTarget" />
+                    <label class="form-label small mb-0">Last amount</label>
+                    <input type="number" min="1" class="form-control form-control-sm" @bind="_addAmount" />
                 </div>
                 <div class="col-6 col-md-1 d-grid">
                     <button class="btn btn-sm btn-primary" @onclick="AddAsync"
-                            disabled="@(_busy || _addTarget <= 0 || (IsCustomMode && string.IsNullOrWhiteSpace(_newName)))">Add</button>
+                            disabled="@(_busy || _addAmount <= 0 || (IsCustomMode && string.IsNullOrWhiteSpace(_newName)))">Add</button>
                 </div>
             </div>
         </div>
@@ -86,8 +86,8 @@ else
                                        placeholder="@TypeName(item)" @bind="_editName" />
                             </div>
                             <div class="col-6 col-md-3">
-                                <label class="form-label small mb-0">Target (@Unit(item.TrackingType))</label>
-                                <input type="number" min="1" class="form-control form-control-sm" @bind="_editTarget" />
+                                <label class="form-label small mb-0">Last amount (@Unit(item.TrackingType))</label>
+                                <input type="number" min="1" class="form-control form-control-sm" @bind="_editAmount" />
                             </div>
                             <div class="col-6 col-md-4 text-md-end">
                                 <button class="btn btn-sm btn-primary" @onclick="SaveEditAsync" disabled="@_busy">Save</button>
@@ -107,7 +107,7 @@ else
                             <div class="flex-grow-1">
                                 <div class="fw-medium">@item.DisplayName</div>
                                 <div class="small text-secondary">
-                                    @item.TargetQuantity @Unit(item.TrackingType)
+                                    last @item.LastQuantity @Unit(item.TrackingType)
                                     @if (!string.Equals(item.DisplayName, TypeName(item), StringComparison.Ordinal))
                                     {
                                         <span>· @TypeName(item)</span>
@@ -145,7 +145,7 @@ else
     // Add form
     private const int CustomSentinel = -1;
     private int _addTypeId;
-    private int _addTarget = 10;
+    private int _addAmount = 10;
     private string? _addCustomName;
     private string? _newName;
     private TrackingType _newTrackingType = TrackingType.Reps;
@@ -155,7 +155,7 @@ else
     // Edit state
     private int? _editingId;
     private string? _editName;
-    private int _editTarget;
+    private int _editAmount;
 
     private int? _confirmRemoveId;
 
@@ -184,7 +184,7 @@ else
 
     private async Task AddAsync()
     {
-        if (_addTarget <= 0)
+        if (_addAmount <= 0)
             return;
 
         _busy = true;
@@ -196,7 +196,7 @@ else
                     return;
 
                 await PoolApi.AddCustomExerciseAsync(
-                    new CreateCustomExerciseRequest(_newName.Trim(), _newTrackingType, _addTarget));
+                    new CreateCustomExerciseRequest(_newName.Trim(), _newTrackingType, _addAmount));
                 _newName = null;
                 _newTrackingType = TrackingType.Reps;
                 await RefreshTypesAsync(); // surface the new exercise in the catalog for reuse
@@ -204,11 +204,11 @@ else
             else
             {
                 await PoolApi.AddPoolItemAsync(
-                    new CreatePoolItemRequest(_addTypeId, _addTarget, _addCustomName));
+                    new CreatePoolItemRequest(_addTypeId, _addAmount, _addCustomName));
                 _addCustomName = null;
             }
 
-            _addTarget = 10;
+            _addAmount = 10;
             await LoadAsync();
         }
         finally
@@ -223,21 +223,21 @@ else
         _editingId = item.Id;
         // Show the current custom override (empty if it's just using the type name).
         _editName = string.Equals(item.DisplayName, TypeName(item), StringComparison.Ordinal) ? null : item.DisplayName;
-        _editTarget = item.TargetQuantity;
+        _editAmount = item.LastQuantity;
     }
 
     private void CancelEdit() => _editingId = null;
 
     private async Task SaveEditAsync()
     {
-        if (_editingId is null || _editTarget <= 0)
+        if (_editingId is null || _editAmount <= 0)
             return;
 
         _busy = true;
         try
         {
             await PoolApi.UpdatePoolItemAsync(_editingId.Value,
-                new UpdatePoolItemRequest(_editName, _editTarget));
+                new UpdatePoolItemRequest(_editName, _editAmount));
             await LoadAsync();
         }
         finally

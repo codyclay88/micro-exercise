@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.ReportsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:DataType="vm:ReportsViewModel"
+    Title="Reports">
+
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout Grid.Row="0" Padding="16,12" Spacing="12">
+            <HorizontalStackLayout Spacing="20">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="From" FontSize="12" Opacity="0.6" />
+                    <DatePicker Date="{Binding From}" Format="MMM d, yyyy" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="To" FontSize="12" Opacity="0.6" />
+                    <DatePicker Date="{Binding To}" Format="MMM d, yyyy" />
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="7d" WidthRequest="60" Command="{Binding SetRangeCommand}" CommandParameter="7" />
+                <Button Text="30d" WidthRequest="60" Command="{Binding SetRangeCommand}" CommandParameter="30" />
+                <Button Text="90d" WidthRequest="60" Command="{Binding SetRangeCommand}" CommandParameter="90" />
+            </HorizontalStackLayout>
+            <Border IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8" Padding="12,8">
+                <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+            </Border>
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Rows}">
+
+                <CollectionView.Header>
+                    <VerticalStackLayout Padding="16,4,16,0" Spacing="6">
+                        <Label Text="{Binding HeaderText}" FontSize="12" Opacity="0.6" />
+                        <Grid ColumnDefinitions="*,64,90,80" ColumnSpacing="12" Padding="0,4">
+                            <Label Grid.Column="0" Text="Exercise" FontSize="12" Opacity="0.5" />
+                            <Label Grid.Column="1" Text="Bursts" FontSize="12" Opacity="0.5" HorizontalTextAlignment="End" />
+                            <Label Grid.Column="2" Text="Total" FontSize="12" Opacity="0.5" HorizontalTextAlignment="End" />
+                            <Label Grid.Column="3" Text="Avg" FontSize="12" Opacity="0.5" HorizontalTextAlignment="End" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SummaryRow">
+                        <Grid Padding="16,8" ColumnDefinitions="*,64,90,80" ColumnSpacing="12">
+                            <Label Grid.Column="0" Text="{Binding ExerciseName}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding BurstsText}" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="{Binding TotalText}" FontAttributes="Bold" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                            <Label Grid.Column="3" Text="{Binding AvgText}" Opacity="0.6" HorizontalTextAlignment="End" VerticalOptions="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+                <CollectionView.EmptyView>
+                    <Label
+                        Text="No bursts recorded in this range."
+                        Padding="24"
+                        HorizontalOptions="Center"
+                        Opacity="0.6"
+                        IsVisible="{Binding IsEmpty}" />
+                </CollectionView.EmptyView>
+
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

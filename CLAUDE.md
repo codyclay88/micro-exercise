@@ -21,6 +21,11 @@ dotnet test  MicroExercise.slnx
 docker compose -f compose.dev.yaml up -d
 cd src/MicroExercise.Web && dotnet run     # http://localhost:5077  (https profile -> :7020)
 
+# MAUI mobile app (src/MicroExercise.Maui). On Windows the project builds the desktop target
+# only (iOS/MacCatalyst need a Mac; Android needs the SDK/JDK configured) — see its csproj.
+dotnet build src/MicroExercise.Maui/MicroExercise.Maui.csproj -f net10.0-windows10.0.19041.0
+# Real mobile builds (on a configured machine): dotnet workload install maui; -f net10.0-android / -ios.
+
 # Deploy the full production stack (app + Postgres + Caddy TLS) on a Droplet:
 cp .env.example .env && docker compose up -d --build
 
@@ -36,8 +41,10 @@ There is no `.sln` — use `MicroExercise.slnx`.
 ## Architecture & layering (do not violate)
 
 ```
-Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
-       \_______________________________________________/   (Client also -> Core, for DTOs)
+Client (WASM) ┐
+              ├─HTTP─►  Web  ->  Infrastructure  ->  Core
+Maui (native) ┘
+   (both clients -> ApiClient -> Core; ApiClient holds the typed REST clients + DTOs)
 ```
 
 - **Core** (`src/MicroExercise.Core`) — entities, enums, DTOs, service interfaces. **No
@@ -45,10 +52,25 @@ Client (WASM) ─HTTP─►  Web  ->  Infrastructure  ->  Core
 - **Infrastructure** (`src/MicroExercise.Infrastructure`) — `AppDbContext`, EF
   configurations, migrations, seeding, and the service *implementations* of Core's
   interfaces. References Core only.
+- **ApiClient** (`src/MicroExercise.ApiClient`) — the typed REST clients
+  (`PoolApi`/`LogApi`/`ReportApi`/`GoalApi`) + `ApiJson` options. A plain library over
+  `HttpClient`, referencing **Core only** (shared DTOs). Shared by the WASM `Client` and the
+  future MAUI app so the data layer stays identical across front-ends (no view code here).
 - **Client** (`src/MicroExercise.Client`) — the Blazor **WebAssembly** SPA (all the app UI:
-  Dashboard/History/Pool/Reports + layout). Calls the REST API via typed clients in
-  `Client/Services` (`PoolApi`/`LogApi`/`ReportApi`); auth state via `CookieAuthStateProvider`.
-  References **Core only** (shared DTOs). Runs in the browser — no server services here.
+  Dashboard/History/Pool/Reports + layout). Calls the REST API via the typed clients in
+  `MicroExercise.ApiClient`; auth state via `CookieAuthStateProvider`.
+  References **Core + ApiClient**. Runs in the browser — no server services here.
+- **Maui** (`src/MicroExercise.Maui`) — the native **.NET MAUI** mobile/desktop app (MVVM +
+  Shell). A *second* client of the same REST API, sharing **Core + ApiClient** verbatim; only
+  the views (XAML + ViewModels) are platform-specific. Reuses the server's cookie auth from
+  native code — `AuthService` drives the static-SSR `/login` form (GET for the antiforgery
+  token, then form-POST) over an `HttpClient` with a shared `CookieContainer`, persists the
+  Identity cookie to `SecureStorage`, and gates the Shell on `GET /api/auth/me`. **No server
+  changes.** See `docs/MAUI-Mobile-App-Design.md`. Phases 1–5 are in: all five feature screens
+  (scaffold + auth; Log; History + Reports; Goals + Pool — mirroring the web pages) plus polish
+  (brand accent + icon/splash, a persisted System/Light/Dark theme toggle in the flyout via
+  `ThemePreference`, and connectivity-error banners on the tab screens via `FeatureViewModel`).
+  Only the optional Phase 6 (Health export) remains.
 - **Web** (`src/MicroExercise.Web`) — Minimal API endpoints, the SPA host
   (`UseBlazorFrameworkFiles` + `MapFallbackToFile("index.html")`), static-SSR auth pages
   (`Components/Account`), DI, auth. Composition root; references Core, Infrastructure, **and
@@ -91,7 +113,7 @@ WASM client never sends a userId (the server derives it from the cookie).
   `MapStaticAssets()` — its fingerprinted endpoints can't serve the Blazor `_framework/*` files
   and it 500s. (So the server `App.razor` and `index.html` reference assets by plain path, not
   `@Assets`/`ImportMap`.)
-- **Shared static assets** (bootstrap, `app.css`, `js/theme.js`, `js/hotkeys.js`, favicon) live
+- **Shared static assets** (bootstrap, `app.css`, `js/theme.js`, `js/dialog.js`, favicon) live
   in **`Web/wwwroot`** and are referenced by absolute path from `Client/wwwroot/index.html`
   (which holds only `index.html`). No duplication across projects.
 - **`BlazorDisableThrowNavigationException`** is set in **both** Web and Client csproj — the

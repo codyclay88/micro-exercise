@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using MicroExercise.Core.Dtos;
 
-namespace MicroExercise.Client.Services;
+namespace MicroExercise.ApiClient;
 
 /// <summary>Client for the goals endpoints under <c>/api/goals</c>.</summary>
 public class GoalApi(HttpClient http)

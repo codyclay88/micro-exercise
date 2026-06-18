@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="MicroExercise.Maui.Pages.PoolPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:MicroExercise.Maui.ViewModels"
+    x:Name="Root"
+    x:DataType="vm:PoolViewModel"
+    Title="Pool">
+
+    <RefreshView IsRefreshing="{Binding IsLoading}" Command="{Binding LoadCommand}">
+        <CollectionView ItemsSource="{Binding Items}">
+
+            <CollectionView.Header>
+                <VerticalStackLayout>
+                    <Border Margin="16,16,16,0" Padding="12,8" IsVisible="{Binding HasError}" BackgroundColor="#D9534F" StrokeThickness="0" StrokeShape="RoundRectangle 8">
+                        <Label Text="{Binding ErrorMessage}" TextColor="White" FontSize="13" />
+                    </Border>
+                    <Border Margin="16,16,16,8" Padding="12" Stroke="#22000000" StrokeThickness="1" StrokeShape="RoundRectangle 12">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Add an exercise" FontSize="16" FontAttributes="Bold" />
+
+                        <Picker
+                            Title="Exercise"
+                            ItemsSource="{Binding Types}"
+                            ItemDisplayBinding="{Binding Label}"
+                            SelectedItem="{Binding SelectedType}" />
+
+                        <!-- New custom exercise -->
+                        <VerticalStackLayout Spacing="10" IsVisible="{Binding ShowCustomFields}">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Name" FontSize="12" Opacity="0.6" />
+                                <Entry Placeholder="e.g. Bunny Hops" MaxLength="50" Text="{Binding NewName}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Type" FontSize="12" Opacity="0.6" />
+                                <Picker ItemsSource="{Binding TrackingTypeOptions}" SelectedIndex="{Binding NewTrackingTypeIndex}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+
+                        <!-- Catalog item: optional custom name override -->
+                        <VerticalStackLayout Spacing="2" IsVisible="{Binding ShowOptionalName}">
+                            <Label Text="Custom name (optional)" FontSize="12" Opacity="0.6" />
+                            <Entry Placeholder="e.g. KB RDL (35 lbs)" MaxLength="100" Text="{Binding AddCustomName}" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="Last amount" FontSize="12" Opacity="0.6" />
+                            <Entry Keyboard="Numeric" Text="{Binding AddAmount}" />
+                        </VerticalStackLayout>
+
+                            <Button Text="Add" Command="{Binding AddCommand}" IsEnabled="{Binding CanAdd}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </CollectionView.Header>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:PoolItemRow">
+                    <Grid Padding="16,8" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                            <Button
+                                Text="↑"
+                                FontSize="12"
+                                Padding="0"
+                                WidthRequest="40"
+                                HeightRequest="32"
+                                IsEnabled="{Binding CanMoveUp}"
+                                Command="{Binding BindingContext.MoveUpCommand, Source={x:Reference Root}}"
+                                CommandParameter="{Binding .}" />
+                            <Button
+                                Text="↓"
+                                FontSize="12"
+                                Padding="0"
+                                WidthRequest="40"
+                                HeightRequest="32"
+                                IsEnabled="{Binding CanMoveDown}"
+                                Command="{Binding BindingContext.MoveDownCommand, Source={x:Reference Root}}"
+                                CommandParameter="{Binding .}" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="{Binding DisplayName}" FontAttributes="Bold" />
+                            <Label Text="{Binding DetailText}" FontSize="12" Opacity="0.6" />
+                        </VerticalStackLayout>
+
+                        <HorizontalStackLayout Grid.Column="2" Spacing="4" VerticalOptions="Center">
+                            <Button
+                                Text="✎"
+                                WidthRequest="40"
+                                Command="{Binding BindingContext.EditCommand, Source={x:Reference Root}}"
+                                CommandParameter="{Binding .}" />
+                            <Button
+                                Text="✕"
+                                WidthRequest="40"
+                                TextColor="#D9534F"
+                                Command="{Binding BindingContext.RemoveCommand, Source={x:Reference Root}}"
+                                CommandParameter="{Binding .}" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.Footer>
+                <Label
+                    Text="Removing an exercise keeps its past history; it just leaves your dashboard."
+                    Padding="16,8"
+                    FontSize="12"
+                    Opacity="0.6"
+                    IsVisible="{Binding HasItems}" />
+            </CollectionView.Footer>
+
+            <CollectionView.EmptyView>
+                <Label
+                    Text="Your pool is empty. Add an exercise above to start logging."
+                    Padding="24"
+                    HorizontalOptions="Center"
+                    Opacity="0.6"
+                    IsVisible="{Binding IsEmpty}" />
+            </CollectionView.EmptyView>
+
+        </CollectionView>
+    </RefreshView>
+</ContentPage>

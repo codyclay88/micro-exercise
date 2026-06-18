@@ -21,7 +21,7 @@ public class CustomExerciseTests
 
         Assert.Equal("Bunny Hops", created.DisplayName);
         Assert.Equal(TrackingType.Reps, created.TrackingType);
-        Assert.Equal(100, created.TargetQuantity);
+        Assert.Equal(100, created.LastQuantity);
         Assert.True(created.IsActive);
 
         // It appears in the user's catalog as a custom entry...
@@ -30,7 +30,7 @@ public class CustomExerciseTests
 
         // ...and in their active pool.
         var pool = await sut.GetActivePoolAsync(UserId);
-        Assert.Contains(pool, p => p.DisplayName == "Bunny Hops" && p.TargetQuantity == 100);
+        Assert.Contains(pool, p => p.DisplayName == "Bunny Hops" && p.LastQuantity == 100);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class CustomExerciseTests
             new CreateCustomExerciseRequest("Planks", TrackingType.Seconds, 30));
 
         Assert.Equal(TrackingType.Seconds, created.TrackingType);
-        Assert.Equal(30, created.TargetQuantity);
+        Assert.Equal(30, created.LastQuantity);
     }
 
     [Fact]
